@@ -43,14 +43,18 @@ do
 					)
 				end,
 				
-				protect = function(self, key)	-- Set a key as immutable downstream.
+				protect = function(self, ...)	-- Set a key as immutable downstream.
 					protect.checkMethod()
-					self._immutableKeys[key] = true
+					for _, key in ipairs{...} do
+						self._immutableKeys[key] = true
+					end
 				end,
 				
-				unprotect = function(self, key)	-- Unset a key as immutable downstream.
+				unprotect = function(self, ...)	-- Unset a key as immutable downstream.
 					protect.checkMethod()
-					self._immutableKeys[key] = false
+					for _, key in ipairs{...} do
+						self._immutableKeys[key] = false
+					end
 				end,
 				
 			},
@@ -142,5 +146,5 @@ page:new{name = "Raw call"}
 if Controls then	-- Runtime code lives here.
 	print("Im running!")
 end
-GetPluginInfo()	-- Generate global PluginInfo definition.
+GetPluginInfo()	-- Generate global PluginInfo definition. Do not remove.
 
