@@ -17,7 +17,7 @@ do
 					assert(type(self) == "table" and self[caller.name] == caller.func, "Attempt to call '" .. (caller.name or "unkown call") .. "' as function instead of method. Check for correct operator (use : instead of .)")
 				end,
 			
-				new = function(self, localData, staticData)	-- Universal 'new' function. Other functions can be passed as tables to reside in the new object.
+				inherit = function(self, localData, staticData)	-- Universal 'new' function. Other functions can be passed as tables to reside in the new object.
 					protect.checkMethod()
 					localData = localData or {}	-- Ensure the 'localData' table exists.
 					localData["_immutableKeys"] = {}	-- Create a '_immutableKeys' value to allow keys to be immutable after the object is created.
@@ -65,36 +65,77 @@ do
 		}
 	)
 
-	page = protect:new(	-- Handler for all plugin pages.
+
+	page = protect:inherit(	-- Handler for all plugin pages.
 		{
 		},
 		{
 			
-			_pages = {},	-- Table to hold the 'page' objects. This is protected from direct access.
+			_pageObjects = {},	-- Table to hold the 'page' objects. This is protected from direct access.
 			
 			new = function(self, t)	-- Create a new page. This will return an optional handle to the page.
 				assert(self == page, "Attempt to call 'new' as function instead of method. Check for correct operator (use : instead of .)")
 				assert(t and type(t) == "table" and t.name, "Failure to supply valid table for new.")
-				t.index = #self._pages + 1
-				table.insert(self._pages, t)
-				rawset(self, t.index, self._pages[t.index])
+				t.index = t.index or (#self._pageObjects + 1)
+				--self._pageObjects[t.index] = getmetatable(getmetatable(page).__index).__index:new({name = t.name},{index = t.index})	-- Longhand way to make inheritance work when overwriting key.
+				self._pageObjects[t.index] = self:inherit({name = t.name},{index = t.index})
+				rawset(self, t.index, self._pageObjects[t.index])
 				return self[t.index]	-- Return a handle to the new page.
 			end,
 			
 		}
 	)
-	getmetatable(page).__newindex = function(t, k, v) error("Attempt to index page directly. Use page:new{} method.") end
+	getmetatable(page).__newindex = function(t, k, v) 
+		--print(t, k, v, type(k))
+		if type(k) == "number" and v.name and type(v.name) == "string" then	-- Allow direct indexing via page[x] = {name = "new page"}
+			page:new{name = v.name, index = k}
+		else
+			error("Invalid attempt to index page. Use page:new{} method.")
+		end
+	end
 
-	visual = protect:new(
+
+	visual = protect:inherit(
 		{
 		},
 		{
+		
+			_visualObjects = {},
+		
 		}
 	)
+	getmetatable(visual).__newindex = function(t, k, v)
+		error("Invalid attempt to index visual. Use visual:new{} method.")
+	end
 
-	control = visual:new()
 
-	knob = control:new()
+	control = visual:inherit(
+		{
+		},
+		{
+		
+			_controlObjects = {},
+		
+			newControl = function(self, t)
+				assert(self == control, "Attempt to call 'new' as function instead of method. Check for correct operator (use : instead of .)")
+				assert(t and type(t) == "table" and t.controlType and t.name, "Failure to supply valid table for new.")
+				assert(not self._controlObjects[t.name], "A Control by the name '" .. t.name .. "' already exists.")
+			end,
+		
+		}
+	)
+	getmetatable(control).__newindex = function(t, k, v)
+		error("Invalid attempt to index control. Use control:protect{} method.")
+	end
+
+
+	knob = control:inherit(
+		{
+		},
+		{
+			controlType = "Knob",
+		}
+	)
 	
 	-- Q-Sys functions. These are called by QSD to generate the plugin layout.
 	
@@ -120,7 +161,7 @@ do
 
 end
 
--- Name that will appear in the Schematic Library (putting ~ inbetween words makes second word the name in a folder called by the first word)
+-- Name that will appear in the Schematic Library. (Putting ~ inbetween words makes second word the name in a folder called by the first word.)
 plugin.name = "My Object Oriented Plugin"
 
 -- This message is seen when a version mismatch occurs.
@@ -129,10 +170,10 @@ plugin.description = "A plugin where all control & graphic elements are objects"
 -- A version number string. A differing version string will prompt the user whether to upgrade.
 plugin.version = "0.1"
 
--- A unique hyphenated GUID (guidgenerator.com)
+-- A unique hyphenated GUID. (guidgenerator.com)
 plugin.guid = "5d98cfd3-8bd0-42c5-9768-d64e74bfd890"
 
--- Setting this to true will reveal the Lua debug window at the bottom of the UI
+-- Setting this to true will reveal the Lua debug window at the bottom of the UI.
 plugin.showDebug = true
 
 
