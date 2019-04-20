@@ -78,7 +78,18 @@ do
 				assert(t and type(t) == "table" and t.name, "Failure to supply valid table for new.")
 				t.index = t.index or (#self._pageObjects + 1)
 				--self._pageObjects[t.index] = getmetatable(getmetatable(page).__index).__index:new({name = t.name},{index = t.index})	-- Longhand way to make inheritance work when overwriting key.
-				self._pageObjects[t.index] = self:inherit({name = t.name},{index = t.index})
+				self._pageObjects[t.index] = self:inherit(
+					{
+						
+						name = t.name
+						
+					},
+					{
+						
+						index = t.index
+						
+					}
+				)
 				rawset(self, t.index, self._pageObjects[t.index])
 				return self[t.index]	-- Return a handle to the new page.
 			end,
@@ -117,15 +128,17 @@ do
 			_controlObjects = {},
 		
 			newControl = function(self, t)
-				assert(self == control, "Attempt to call 'new' as function instead of method. Check for correct operator (use : instead of .)")
-				assert(t and type(t) == "table" and t.controlType and t.name, "Failure to supply valid table for new.")
+				--assert(self == control, "Attempt to call 'new' as function instead of method. Check for correct operator (use : instead of .)")
+				assert(t and type(t) == "table" and t.name and self.controlType, "Failure to supply valid table for new.")
 				assert(not self._controlObjects[t.name], "A Control by the name '" .. t.name .. "' already exists.")
+				control._controlObjects[t.name] = self:inherit({}, t)
+				return control._controlObjects[t.name]
 			end,
 		
 		}
 	)
 	getmetatable(control).__newindex = function(t, k, v)
-		error("Invalid attempt to index control. Use control:protect{} method.")
+		error("Invalid attempt to index control. Use control:new{} method.")
 	end
 
 
@@ -134,6 +147,8 @@ do
 		},
 		{
 			controlType = "Knob",
+			
+			new = function(self, t) return self:newControl(t) end	--function(self, t) return control.newControl(t) end,
 		}
 	)
 	
