@@ -1,8 +1,8 @@
-protect = setmetatable(	-- This is the root object. It contains various 
+protect = setmetatable(	-- This is the root object. It contains various universal functions that will be inherited downstream. This entire object is immutable.
 	{	-- Local data. This data can be changed on the local 'protect' function.
 	
 		wow = "Wow!",	-- Test data.
-		_protectedKeys = {},
+		_immutableKeys = {},
 		
 	},
 	{	-- Metamethods.
@@ -28,11 +28,11 @@ protect = setmetatable(	-- This is the root object. It contains various
 								__index = self,
 							}
 						),
-						__newindex = function(self, k, v)	-- Metamethod to check if key is protected before setting. Raise an error if an overwrite is attempted on a protected key.
+						__newindex = function(self, k, v)	-- Metamethod to check if key is immutable before setting. Raise an error if an overwrite is attempted on an immutable key.
 							--print("Hit!", self, k, v)
-							--if self._protectedKeys[k] ~= false and (self._protectedKeys[k] or self._protectedKeys[self] or self[k]) then	-- Protect all by default.
-							if self._protectedKeys[k] or self._protectedKeys[self] or self[k] then	-- Protect only static.
-								error("Attempt to modify protected table / key: " .. k or "", 2)
+							--if self._immutableKeys[k] ~= false and (self._immutableKeys[k] or self._immutableKeys[self] or self[k]) then	-- Protect all by default.
+							if self._immutableKeys[k] or self._immutableKeys[self] or self[k] then	-- Protect only static.
+								error("Attempt to modify immutable table / key: " .. k or "", 2)
 							end
 							rawset(self, k, v)
 						end,
@@ -41,20 +41,26 @@ protect = setmetatable(	-- This is the root object. It contains various
 				)
 			end,
 			
-			protect = function(self, key)	-- Set a key as protected downstream.
+			protect = function(self, key)	-- Set a key as immutable downstream.
 				protect.checkMethod()
 				self._protectedKeys[key] = true
 			end,
 			
-			unprotect = function(self, key)	-- Unset a key as protected downstream.
+			unprotect = function(self, key)	-- Unset a key as immutable downstream.
 				protect.checkMethod()
 				self._protectedKeys[key] = false
 			end,
 			
 		},
 		
-		__newindex = function(t, k, v) error("Attempt to modify protected global table / key: " .. k or "", 2) end,	-- Prevent modification or creation of any keys.
+		__newindex = function(t, k, v) error("Attempt to modify immutable global table / key: " .. k or "", 2) end,	-- Prevent modification or creation of any keys.
 		__metatable = false,	-- Prevent anyone dicking with the metatable.
 		
 	}
 )
+
+visual = protect:new()
+
+control = visual:new()
+
+knob = control:new()
