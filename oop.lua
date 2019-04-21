@@ -1,4 +1,52 @@
-local plugin = {}
+local plugin
+local function PluginDefinition(caller, props)
+	--_G.props = props or setmetatable({}, {__index = nil, __newindex = nil}) -- Friendly nils for undefined props.
+	
+	local function info()
+		plugin = {}
+		
+		-- Name that will appear in the Schematic Library. (Putting ~ inbetween words makes second word the name in a folder called by the first word.)
+		plugin.name = "My Object Oriented Plugin"
+
+		-- This message is seen when a version mismatch occurs.
+		plugin.description = "A plugin where all control & graphic elements are objects"
+
+		-- A version number string. A differing version string will prompt the user whether to upgrade.
+		plugin.version = "0.1"
+
+		-- A unique hyphenated GUID. (guidgenerator.com)
+		plugin.guid = "5d98cfd3-8bd0-42c5-9768-d64e74bfd890"
+
+		-- Setting this to true will reveal the Lua debug window at the bottom of the UI.
+		plugin.showDebug = true
+	end
+	local function layout()
+		a = page:new{name = "Temp Name"}
+		b = page:new{name = "Page 2"}
+
+		a.name = "Better Name"
+
+		page:new{name = "Raw call"}
+	end
+	local function runtime()
+	
+	end
+	
+	if not plugin then info() layout() end
+	if caller == "info" then	-- Return plugin information table.
+		return {Name = plugin.name .. " v" .. plugin.version, Description = plugin.description, Version = plugin.version,Id = plugin.guid, ShowDebug = plugin.showDebug}
+	
+	elseif caller == "pages" then	-- Return plugin pages.
+		local pages = {}
+		for index, page in ipairs(page) do	-- Iterate through the 'page' table, and pass just the page.name.
+			table.insert( pages, {name = page.name})
+		end
+		return pages
+	
+	end
+end
+
+
 do
 	protect = setmetatable(	-- This is the root object. It contains various universal functions that will be inherited downstream. This entire object is immutable.
 		{	-- Local data. This data can be changed on the local 'protect' function.
@@ -154,53 +202,18 @@ do
 	
 	-- Q-Sys functions. These are called by QSD to generate the plugin layout.
 	
-	function GetPages()	-- Define pages for the plugin.
-		local pages = {}
-		for index, page in ipairs(page) do	-- Iterate through the 'page' table, and pass just the page.name.
-			table.insert( pages, {name = page.name})
-		end
-		return pages
-	end
+	function GetPages()	return PluginDefinition("pages") end
 
 	function GetProperties()	-- Define plugin properties.
-		--return {}
 	end
 	
 	function GetControls()	-- Define plugin controls.
-	
-	end
-	
-	function GetPluginInfo()	-- Generate global PluginInfo definition.
-		PluginInfo = {Name = plugin.name .. " v" .. plugin.version, Description = plugin.description, Version = plugin.version,Id = plugin.guid, ShowDebug = plugin.showDebug}
 	end
 
 end
-
--- Name that will appear in the Schematic Library. (Putting ~ inbetween words makes second word the name in a folder called by the first word.)
-plugin.name = "My Object Oriented Plugin"
-
--- This message is seen when a version mismatch occurs.
-plugin.description = "A plugin where all control & graphic elements are objects"
-
--- A version number string. A differing version string will prompt the user whether to upgrade.
-plugin.version = "0.1"
-
--- A unique hyphenated GUID. (guidgenerator.com)
-plugin.guid = "5d98cfd3-8bd0-42c5-9768-d64e74bfd890"
-
--- Setting this to true will reveal the Lua debug window at the bottom of the UI.
-plugin.showDebug = true
-
-
-a = page:new{name = "Temp Name"}
-b = page:new{name = "Page 2"}
-
-a.name = "Better Name"
-
-page:new{name = "Raw call"}
 
 if Controls then	-- Runtime code lives here.
 	print("Im running!")
 end
-GetPluginInfo()	-- Generate global PluginInfo definition. Do not remove.
-
+--GetPluginInfo.init()	-- Generate global PluginInfo definition. Do not remove.
+PluginInfo = PluginDefinition("info")
