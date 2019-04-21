@@ -21,27 +21,26 @@ local function PluginDefinition(caller, props)
 		plugin.showDebug = true
 	end
 	local function layout()
-		a = page:new{name = "Temp Name"}
-		b = page:new{name = "Page 2"}
-
-		a.name = "Better Name"
-
-		page:new{name = "Raw call"}
+	
+		-- Example page definitions:
+		a = page:new{name = "Temp Name"}	-- Define a new page, and capture its handle.
+		b = page:new{name = "Page 2"}		-- Define another page, and capture its handle.
+		a.name = "Better Name"				-- Rename our first page using its handle.
+		page:new{name = "Raw call"}			-- Define a new page without a handle.
+		page[4] = {name = "Test"}			-- Define a new page directly. Not recommended, but syntactically valid.
+		
 	end
 	local function runtime()
 	
 	end
 	
-	if not plugin then info() layout() end
+	if not plugin then info() layout() end	-- Ensure that 'layout()' is only called once. Othewise we will define onjects multiple times.
 	if caller == "info" then	-- Return plugin information table.
+		info()
 		return {Name = plugin.name .. " v" .. plugin.version, Description = plugin.description, Version = plugin.version,Id = plugin.guid, ShowDebug = plugin.showDebug}
 	
 	elseif caller == "pages" then	-- Return plugin pages.
-		local pages = {}
-		for index, page in ipairs(page) do	-- Iterate through the 'page' table, and pass just the page.name.
-			table.insert( pages, {name = page.name})
-		end
-		return pages
+		return page:list()
 	
 	end
 end
@@ -141,6 +140,14 @@ do
 				rawset(self, t.index, self._pageObjects[t.index])
 				return self[t.index]	-- Return a handle to the new page.
 			end,
+			
+			list = function()	-- Return a clean array of all pages.
+				local pages = {}
+				for i, p in ipairs(page) do	-- Iterate through the 'page' table, and pass just the page.name.
+					table.insert( pages, {name = p.name})
+				end
+				return pages
+			end
 			
 		}
 	)
