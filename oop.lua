@@ -27,7 +27,10 @@ local function PluginDefinition(caller, props)
 		b = page:new{name = "Page 2"}		-- Define another page, and capture its handle.
 		a.name = "Better Name"				-- Rename our first page using its handle.
 		page:new{name = "Raw call"}			-- Define a new page without a handle.
-		page[4] = {name = "Test"}			-- Define a new page directly. Not recommended, but syntactically valid. (page.__newindex metamethod calls page:new() to facilitate this behavour.)
+		page[4] = {name = "Test"}			-- Define a new page directly. Use with caution. (page.__newindex metamethod calls page:new() to facilitate this behavour.)
+		
+		ka = knob:new{name = "knob1"}
+		kb = knob:new{name = "knob2"}
 		
 	end
 	local function runtime()
@@ -41,6 +44,9 @@ local function PluginDefinition(caller, props)
 	
 	elseif caller == "pages" then	-- Return plugin pages.
 		return page:list()
+	
+	elseif caller == "controls" then
+		return control:list()
 	
 	end
 end
@@ -144,7 +150,7 @@ do
 			list = function()	-- Return a clean array of all pages.
 				local pages = {}
 				for i, p in ipairs(page) do	-- Iterate through the 'page' table, and pass just the page.name.
-					table.insert( pages, {name = p.name})
+					table.insert(pages, {name = p.name})
 				end
 				return pages
 			end
@@ -167,6 +173,10 @@ do
 		{
 		
 			_visualObjects = {},
+			
+			newVisual = function(self, t)
+			
+			end
 		
 		}
 	)
@@ -186,8 +196,34 @@ do
 				assert(t and type(t) == "table" and t.name and self.controlType, "Failure to supply valid table for new.")
 				assert(not self._controlObjects[t.name], "A Control by the name '" .. t.name .. "' already exists.")
 				control._controlObjects[t.name] = self:inherit({}, t)
+				
+				control._controlObjects[t.name].__newindexold = getmetatable(control._controlObjects[t.name]).__newindex	-- Tricks for control indexing.
+				getmetatable(control._controlObjects[t.name]).__newindex = function(t, k, v)
+					if type(k) == "number" then
+						--t:newindex()
+						error("Bugger Off!",2)
+					else
+						return control._controlObjects[t.name].__newindexold(t, k, v)
+					end
+				end
+				
 				return control._controlObjects[t.name]
 			end,
+			
+			list = function()
+				local controls = {}
+				for i, p in pairs(control._controlObjects) do	-- Iterate through the '_controlObjects' table, build the control definitions table.
+					local ctl = {}
+					ctl["Name"] = p.name
+					ctl["ControlType"] = p.controlType
+					ctl["ControlUnit"] = p.unit
+					ctl["Min"] = p.min
+					ctl["Max"] = p.max
+					ctl["Count"] = #p
+					table.insert(controls, ctl)
+				end
+				return controls
+			end
 		
 		}
 	)
@@ -205,24 +241,31 @@ do
 			
 			new = function(self, t)	--function(self, t) return control.newControl(t) end,
 				--assert(self == control, "Attempt to call 'new' as function instead of method. Check for correct operator (use : instead of .)")
+				assert(
+					t.name
+					--and t.unit and (t.unit == "Hz" or t.unit == "Float" or t.unit == "Integer" or t.unit == "Pan" or t.unit == "Percent" or t.unit == "Position" or t.unit == "Seconds")
+					--and (t.min and type(t.min) == "number")
+					--and (t.max and type(t.max) == "number")
+				, "Failure to supply valid table for new.")
 				protect.checkMethod()
-				self:unprotect(
+				local ctl = self:newControl(t)
+				ctl:unprotect(
+					--"controlType", -- do this only on indices.
 					"blah"
 				)
-				return self:newControl(t)
+				return ctl
 			end,
 		}
 	)
 	
 	-- Q-Sys functions. These are called by QSD to generate the plugin layout.
 	
-	function GetPages()	return PluginDefinition("pages") end
+	function GetPages() return PluginDefinition("pages") end
 
 	function GetProperties()	-- Define plugin properties.
 	end
 	
-	function GetControls()	-- Define plugin controls.
-	end
+	function GetControls(props) return PluginDefinition("controls", props) end
 
 end
 
