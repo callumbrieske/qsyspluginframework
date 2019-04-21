@@ -27,7 +27,7 @@ local function PluginDefinition(caller, props)
 		b = page:new{name = "Page 2"}		-- Define another page, and capture its handle.
 		a.name = "Better Name"				-- Rename our first page using its handle.
 		page:new{name = "Raw call"}			-- Define a new page without a handle.
-		page[4] = {name = "Test"}			-- Define a new page directly. Not recommended, but syntactically valid.
+		page[4] = {name = "Test"}			-- Define a new page directly. Not recommended, but syntactically valid. (page.__newindex metamethod calls page:new() to facilitate this behavour.)
 		
 	end
 	local function runtime()
@@ -67,7 +67,7 @@ do
 				inherit = function(self, localData, staticData)	-- Universal 'new' function. Other functions can be passed as tables to reside in the new object.
 					protect.checkMethod()
 					localData = localData or {}	-- Ensure the 'localData' table exists.
-					localData["_immutableKeys"] = {}	-- Create a '_immutableKeys' value to allow keys to be immutable after the object is created.
+					localData["_immutableKeys"] = setmetatable({}, {__index = self._immutableKeys})	-- Create a '_immutableKeys' value to allow keys to be immutable after the object is created.
 					return setmetatable(
 						localData,	-- This table hold data 'local' to the object. This can be changed after creation unless set as immutable after creation.
 						{
@@ -80,7 +80,7 @@ do
 							__newindex = function(self, k, v)	-- Metamethod to check if key is immutable before setting. Raise an error if an overwrite is attempted on an immutable key.
 								--print("Hit!", self, k, v)
 								--if self._immutableKeys[k] ~= false and (self._immutableKeys[k] or self._immutableKeys[self] or self[k]) then	-- All by default are immutable.
-								if self._immutableKeys[k] or self._immutableKeys[self] or self[k] then	-- Only static is immutable.
+								if self._immutableKeys[k] ~= false and (self._immutableKeys[k] or self._immutableKeys[self] or self[k]) then	-- Only static is immutable.
 									error("Attempt to modify immutable table / key: " .. k or "", 2)
 								end
 								rawset(self, k, v)
@@ -183,7 +183,6 @@ do
 			_controlObjects = {},
 		
 			newControl = function(self, t)
-				--assert(self == control, "Attempt to call 'new' as function instead of method. Check for correct operator (use : instead of .)")
 				assert(t and type(t) == "table" and t.name and self.controlType, "Failure to supply valid table for new.")
 				assert(not self._controlObjects[t.name], "A Control by the name '" .. t.name .. "' already exists.")
 				control._controlObjects[t.name] = self:inherit({}, t)
@@ -199,11 +198,19 @@ do
 
 	knob = control:inherit(
 		{
+			blah = "blah",
 		},
 		{
 			controlType = "Knob",
 			
-			new = function(self, t) return self:newControl(t) end	--function(self, t) return control.newControl(t) end,
+			new = function(self, t)	--function(self, t) return control.newControl(t) end,
+				--assert(self == control, "Attempt to call 'new' as function instead of method. Check for correct operator (use : instead of .)")
+				protect.checkMethod()
+				self:unprotect(
+					"blah"
+				)
+				return self:newControl(t)
+			end,
 		}
 	)
 	
