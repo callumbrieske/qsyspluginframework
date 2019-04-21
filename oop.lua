@@ -30,7 +30,10 @@ local function PluginDefinition(caller, props)
 		page[4] = {name = "Test"}			-- Define a new page directly. Use with caution. (page.__newindex metamethod calls page:new() to facilitate this behavour.)
 		
 		ka = knob:new{name = "knob1"}
-		kb = knob:new{name = "knob2"}
+		ka.min = 0
+		ka.max = 10
+		ka.unit = "Integer"
+		--kb = knob:new{name = "knob2"}
 		
 	end
 	local function runtime()
@@ -195,31 +198,33 @@ do
 			newControl = function(self, t)
 				assert(t and type(t) == "table" and t.name and self.controlType, "Failure to supply valid table for new.")
 				assert(not self._controlObjects[t.name], "A Control by the name '" .. t.name .. "' already exists.")
-				control._controlObjects[t.name] = self:inherit({}, t)
+				local name = t.name t.name = nil	-- Move t.name to local.
+				control._controlObjects[name] = self:inherit(t, {name = name})	-- Perhaps t should be unprotected?
 				
-				control._controlObjects[t.name].__newindexold = getmetatable(control._controlObjects[t.name]).__newindex	-- Tricks for control indexing.
-				getmetatable(control._controlObjects[t.name]).__newindex = function(t, k, v)
+				control._controlObjects[name].__newindexold = getmetatable(control._controlObjects[name]).__newindex	-- Tricks for control indexing.
+				getmetatable(control._controlObjects[name]).__newindex = function(t, k, v)
 					if type(k) == "number" then
 						--t:newindex()
 						error("Bugger Off!",2)
 					else
-						return control._controlObjects[t.name].__newindexold(t, k, v)
+						return control._controlObjects[name].__newindexold(t, k, v)
 					end
 				end
 				
-				return control._controlObjects[t.name]
+				return control._controlObjects[name]
 			end,
 			
 			list = function()
 				local controls = {}
 				for i, p in pairs(control._controlObjects) do	-- Iterate through the '_controlObjects' table, build the control definitions table.
+					print(p.name, p.unit, p.min, p.max, #p)
 					local ctl = {}
 					ctl["Name"] = p.name
 					ctl["ControlType"] = p.controlType
 					ctl["ControlUnit"] = p.unit
 					ctl["Min"] = p.min
 					ctl["Max"] = p.max
-					ctl["Count"] = #p
+					ctl["Count"] = 1 -- #p
 					table.insert(controls, ctl)
 				end
 				return controls
@@ -266,6 +271,17 @@ do
 	end
 	
 	function GetControls(props) return PluginDefinition("controls", props) end
+	
+	function GetControlLayout(props)
+		local page = props["page_index"].Value
+		return {
+			["knob1"] = {
+				Style = "Knob",
+				Position = {10, 10},
+				Size = {50, 50}
+			}
+		}, {}
+	end
 
 end
 
