@@ -57,7 +57,7 @@ end
 
 do
 	protect = setmetatable(	-- This is the root object. It contains various universal functions that will be inherited downstream. This entire object is immutable.
-		{	-- Local data. This data can be changed on the local 'protect' function.
+		{	-- Local data. This data can be changed on the local 'protect' function, is immutable downstream.
 		
 			wow = "Wow!",	-- Test data.
 			_immutableKeys = {},
@@ -65,7 +65,7 @@ do
 		},
 		{	-- Metamethods.
 		
-			__index = {	-- Static data that is protected from change locally and downstream.
+			__index = {	-- Static data that is immutable from change locally and downstream.
 			
 				checkMethod = function()	-- Check that a function was called using the ':' method operator.
 					local caller = debug.getinfo(2)
