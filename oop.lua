@@ -24,10 +24,10 @@ local function PluginDefinition(caller, props)
 	
 		-- Example page definitions:
 		a = page:new{name = "Temp Name"}	-- Define a new page, and capture its handle.
-		b = page:new{name = "Page 2"}		-- Define another page, and capture its handle.
-		a.name = "Better Name"				-- Rename our first page using its handle.
-		page:new{name = "Raw call"}			-- Define a new page without a handle.
-		page[4] = {name = "Test"}			-- Define a new page directly. Use with caution. (page.__newindex metamethod calls page:new() to facilitate this behavour.)
+		--b = page:new{name = "Page 2"}		-- Define another page, and capture its handle.
+		--a.name = "Better Name"				-- Rename our first page using its handle.
+		--page:new{name = "Raw call"}			-- Define a new page without a handle.
+		--page[4] = {name = "Test"}			-- Define a new page directly. Use with caution. (page.__newindex metamethod calls page:new() to facilitate this behavour.)
 		
 		ka = knob:new{name = "knob1"}
 		ka.min = 0
