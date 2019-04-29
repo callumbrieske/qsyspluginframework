@@ -1,31 +1,36 @@
 local plugin
-local function PluginDefinition(caller, props)
+function PluginDefinition(caller, props)
 	--_G.props = props or setmetatable({}, {__index = nil, __newindex = nil}) -- Friendly nils for undefined props.
 	
 	local function info()
+
 		plugin = {}
-		
-		-- Name that will appear in the Schematic Library. (Putting ~ inbetween words makes second word the name in a folder called by the first word.)
-		plugin.name = "My Object Oriented Plugin"
-
-		-- This message is seen when a version mismatch occurs.
-		plugin.description = "A plugin where all control & graphic elements are objects"
-
-		-- A version number string. A differing version string will prompt the user whether to upgrade.
-		plugin.version = "0.1"
 
 		-- A unique hyphenated GUID. (guidgenerator.com)
 		plugin.guid = "5d98cfd3-8bd0-42c5-9768-d64e74bfd890"
 
+		-- A version number string. A differing version string will prompt the user whether to upgrade.
+		plugin.version = "0.1"
+		
+		-- Name that will appear in the Schematic Library. (Putting ~ inbetween words makes second word the name in a folder called by the first word.)
+		plugin.name = "My Object Oriented Plugin"
+
+		-- Name that will appear on the plugin icon, and in the title bar. (This is optional.)
+		--plugin.prettyName = "My Object Oriented Plugin With A Pretty Name"
+
+		-- This message may be seen when a version mismatch occurs.
+		plugin.description = "A plugin where all control & graphic elements are objects"
+
 		-- Setting this to true will reveal the Lua debug window at the bottom of the UI.
 		plugin.showDebug = true
+
 	end
 	local function layout()
 	
 		-- Example page definitions:
 		a = page:new{name = "Temp Name"}	-- Define a new page, and capture its handle.
 		b = page:new{name = "Page 2"}		-- Define another page, and capture its handle.
-		--a.name = "Better Name"				-- Rename our first page using its handle.
+		a.name = "Better Name"				-- Rename our first page using its handle.
 		--page:new{name = "Raw call"}			-- Define a new page without a handle.
 		--page[4] = {name = "Test"}			-- Define a new page directly. Use with caution. (page.__newindex metamethod calls page:new() to facilitate this behavour.)
 		
@@ -37,13 +42,17 @@ local function PluginDefinition(caller, props)
 		
 	end
 	local function runtime()
-	
+		print("Wow! We are running code!")
 	end
 	
-	if not plugin then info() layout() end	-- Ensure that 'layout()' is only called once. Othewise we will define onjects multiple times.
+	
 	if caller == "info" then	-- Return plugin information table.
 		info()
+		layout()	-- Move this call. We should call this after the properties have been defined & rectified.
 		return {Name = plugin.name .. " v" .. plugin.version, Description = plugin.description, Version = plugin.version,Id = plugin.guid, ShowDebug = plugin.showDebug}
+	
+	elseif caller == "name" then
+		return plugin.prettyName and plugin.prettyName:len() > 0 and plugin.prettyName or plugin.name
 	
 	elseif caller == "pages" then	-- Return plugin pages.
 		return page:list()
@@ -53,6 +62,9 @@ local function PluginDefinition(caller, props)
 		
 	elseif caller == "layout" then
 		return visual:list(page:list()[props["page_index"].Value])
+	
+	elseif caller == "runtime" then
+		return runtime
 	
 	end
 end
@@ -181,6 +193,10 @@ visual = protect:inherit(
 		
 		newVisual = function(self, t)
 		
+		end,
+
+		list = function(self, t)
+			print(t.name)
 		end
 	
 	}
@@ -267,6 +283,10 @@ knob = control:inherit(
 
 -- Q-Sys functions. These are called by QSD to generate the plugin layout.
 
+function GetPrettyName()
+	return PluginDefinition("name")
+end
+
 function GetPages() return PluginDefinition("pages") end
 
 function GetProperties()	-- Define plugin properties.
@@ -291,8 +311,10 @@ end
 
 
 
+
 if Controls then	-- Runtime code lives here.
-	print("Im running!")
+	--print("Im running!")
+	PluginDefinition("runtime")()
+else
+	PluginInfo = PluginDefinition("info")	-- Generate global PluginInfo definition. Do not remove.
 end
---GetPluginInfo.init()	-- Generate global PluginInfo definition. Do not remove.
-PluginInfo = PluginDefinition("info")
