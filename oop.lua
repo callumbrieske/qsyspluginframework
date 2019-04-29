@@ -24,15 +24,15 @@ local function PluginDefinition(caller, props)
 	
 		-- Example page definitions:
 		a = page:new{name = "Temp Name"}	-- Define a new page, and capture its handle.
-		--b = page:new{name = "Page 2"}		-- Define another page, and capture its handle.
+		b = page:new{name = "Page 2"}		-- Define another page, and capture its handle.
 		--a.name = "Better Name"				-- Rename our first page using its handle.
 		--page:new{name = "Raw call"}			-- Define a new page without a handle.
 		--page[4] = {name = "Test"}			-- Define a new page directly. Use with caution. (page.__newindex metamethod calls page:new() to facilitate this behavour.)
 		
 		ka = knob:new{name = "knob1"}
-		ka.min = 0
-		ka.max = 10
-		ka.unit = "Integer"
+		--ka.min = 0
+		--ka.max = 100
+		--ka.unit = "Integer"
 		--kb = knob:new{name = "knob2"}
 		
 	end
@@ -218,14 +218,14 @@ control = visual:inherit(
 		
 		list = function()
 			local controls = {}
-			for i, p in pairs(control._controlObjects) do	-- Iterate through the '_controlObjects' table, build the control definitions table.
+			for _, p in pairs(control._controlObjects) do	-- Iterate through the '_controlObjects' table, build the control definitions table.
 				print(p.name, p.unit, p.min, p.max, #p)
 				local ctl = {}
 				ctl["Name"] = p.name
 				ctl["ControlType"] = p.controlType
-				ctl["ControlUnit"] = p.unit
-				ctl["Min"] = p.min
-				ctl["Max"] = p.max
+				ctl["ControlUnit"] = p.unit or "Integer"
+				ctl["Min"] = p.min or 0
+				ctl["Max"] = p.max or 1
 				ctl["Count"] = 1 -- #p
 				table.insert(controls, ctl)
 			end
@@ -284,8 +284,6 @@ function GetControlLayout(props)
 		}
 	}, {}
 end
-
-
 
 
 
