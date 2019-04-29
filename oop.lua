@@ -15,8 +15,8 @@ function PluginDefinition(caller, props)
 		-- Name that will appear in the Schematic Library. (Putting ~ inbetween words makes second word the name in a folder called by the first word.)
 		plugin.name = "My Object Oriented Plugin"
 
-		-- Name that will appear on the plugin icon, and in the title bar. (This is optional.)
-		--plugin.prettyName = "My Object Oriented Plugin With A Pretty Name"
+		-- Name that will appear on the plugin icon, and in the title bar. (This is optional. If not supplied plugin.name will be used.)
+		plugin.prettyName = "My Object Oriented Plugin With A Pretty Name"
 
 		-- This message may be seen when a version mismatch occurs.
 		plugin.description = "A plugin where all control & graphic elements are objects"
@@ -28,15 +28,15 @@ function PluginDefinition(caller, props)
 	local function layout()
 	
 		-- Example page definitions:
-		a = page:new{name = "Temp Name"}	-- Define a new page, and capture its handle.
-		b = page:new{name = "Page 2"}		-- Define another page, and capture its handle.
+		local a = page:new{name = "Temp Name"}	-- Define a new page, and capture its handle.
+		local b = page:new{name = "Page 2"}		-- Define another page, and capture its handle.
 		a.name = "Better Name"				-- Rename our first page using its handle.
 		--page:new{name = "Raw call"}			-- Define a new page without a handle.
 		--page[4] = {name = "Test"}			-- Define a new page directly. Use with caution. (page.__newindex metamethod calls page:new() to facilitate this behavour.)
 		
 		ka = knob:new{name = "knob1"}
 		--ka.min = 0
-		--ka.max = 100
+		ka.max = 100
 		--ka.unit = "Integer"
 		--kb = knob:new{name = "knob2"}
 		
@@ -49,7 +49,7 @@ function PluginDefinition(caller, props)
 	if caller == "info" then	-- Return plugin information table.
 		info()
 		layout()	-- Move this call. We should call this after the properties have been defined & rectified.
-		return {Name = plugin.name .. " v" .. plugin.version, Description = plugin.description, Version = plugin.version,Id = plugin.guid, ShowDebug = plugin.showDebug}
+		return {Name = plugin.name, Description = plugin.description, Version = plugin.version, Id = plugin.guid, ShowDebug = plugin.showDebug}
 	
 	elseif caller == "name" then
 		return plugin.prettyName and plugin.prettyName:len() > 0 and plugin.prettyName or plugin.name
@@ -186,6 +186,8 @@ end
 
 visual = protect:inherit(
 	{
+		height = 32,
+		width = 32,
 	},
 	{
 	
@@ -239,9 +241,9 @@ control = visual:inherit(
 				local ctl = {}
 				ctl["Name"] = p.name
 				ctl["ControlType"] = p.controlType
-				ctl["ControlUnit"] = p.unit or "Integer"
-				ctl["Min"] = p.min or 0
-				ctl["Max"] = p.max or 1
+				ctl["ControlUnit"] = p.unit
+				ctl["Min"] = p.min
+				ctl["Max"] = p.max
 				ctl["Count"] = 1 -- #p
 				table.insert(controls, ctl)
 			end
@@ -258,6 +260,12 @@ end
 knob = control:inherit(
 	{
 		blah = "blah",
+
+		-- Default values.
+		unit = "Integer",
+		min = 0,
+		max = 1,
+
 	},
 	{
 		controlType = "Knob",
@@ -274,7 +282,9 @@ knob = control:inherit(
 			local ctl = self:newControl(t)
 			ctl:unprotect(
 				--"controlType", -- do this only on indices.
-				"blah"
+				"unit",
+				"min",
+				"max"
 			)
 			return ctl
 		end,
