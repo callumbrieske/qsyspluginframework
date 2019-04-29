@@ -50,6 +50,9 @@ local function PluginDefinition(caller, props)
 	
 	elseif caller == "controls" then
 		return control:list()
+		
+	elseif caller == "layout" then
+		return visual:list(page:list()[props["page_index"].Value])
 	
 	end
 end
