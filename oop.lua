@@ -290,7 +290,6 @@ control = visual:inherit(
 				getmetatable(getmetatable(self).__index[position]).__newindex = function(t, k, v) rawset(t, k, t:inherit(v)) end	-- Method to create a visual instance.
 
 				for _, v in ipairs(pages) do	-- If pages are supplied in method call, then create those tables in the new object.
-					print(v.name)
 					getmetatable(self).__index[position][v] = {}
 				end
 
