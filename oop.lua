@@ -10,10 +10,10 @@ function PluginDefinition(caller, props)
 		plugin.guid = "5d98cfd3-8bd0-42c5-9768-d64e74bfd890"
 
 		-- A version number string. A differing version string will prompt the user whether to upgrade.
-		plugin.version = "0.1"
+		plugin.version = "0.0.1"
 		
 		-- Name that will appear in the Schematic Library. (Putting ~ inbetween words makes second word the name in a folder called by the first word.)
-		plugin.name = "My Object Oriented Plugin"
+		plugin.name = "My Object Oriented Plugin v" .. plugin.version
 
 		-- Name that will appear on the plugin icon, and in the title bar. (This is optional. If not supplied plugin.name will be used.)
 		plugin.prettyName = "My Object Oriented Plugin With A Pretty Name"
@@ -28,24 +28,47 @@ function PluginDefinition(caller, props)
 	local function layout()
 	
 		-- Example page definitions:
-		local a = page:new{name = "Temp Name"}	-- Define a new page, and capture its handle.
-		local b = page:new{name = "Page 2"}		-- Define another page, and capture its handle.
+		a = page:new{name = "Temp Name"}	-- Define a new page, and capture its handle.
+		b = page:new{name = "Page 2"}		-- Define another page, and capture its handle.
 		a.name = "Better Name"				-- Rename our first page using its handle.
 		--page:new{name = "Raw call"}			-- Define a new page without a handle.
 		--page[4] = {name = "Test"}			-- Define a new page directly. Use with caution. (page.__newindex metamethod calls page:new() to facilitate this behavour.)
 		
-		ka = knob:new{name = "knob1", unit = "Integer", min = 0, max = 100}
+		--ka = knob:new{name = "knob1", unit = "Integer", min = 0, max = 100}
 		--ka.min = 0
 		--ka.max = 100
-		ka:newIndex()
-		ka:newIndex()
+		--ka:newIndex()
+
+		--ka.yPos = 100
+
+		--ka[1][a] = {xPos = 800}
+		--ka:newIndex()[a] = {xPos = 40, yPos = 120}
 		--ka[2] = 3
 		--ka.unit = "Integer"
 		--kb = knob:new{name = "knob2"}
+
+		
+		--ka = knob:new{name = "knob1", unit = "Integer", min = 0, max = 100, style = "Knob", height = 50, width = 50}
+		--ka:newIndex{{a, b}, xPos = 40, yPos = 120}
+
+		knob:new{name = "knob1", unit = "Integer", min = 0, max = 100, style = "Knob", height = 50, width = 50}:newIndex{{a, b}, xPos = 40, yPos = 120}	-- Single line control & layout definition.
+		
+		k2 = knob:new{name = "knob2", unit = "Integer", min = 0, max = 100, style = "Knob", height = 50, width = 50}
+		k2:newIndex{{a, b}, xPos = 140, yPos = 120}
+		k2:newIndex{{a, b}, xPos = 240, yPos = 120}
+		
+
+		
 		
 	end
 	local function runtime()
 		print("Wow! We are running code!")
+		function l(c)
+			print(c.Value)
+		end
+		Controls.knob1.EventHandler = l
+		Controls.knob2[1].EventHandler = l
+		Controls.knob2[2].EventHandler = l
 	end
 	
 	
@@ -64,7 +87,7 @@ function PluginDefinition(caller, props)
 		return control:list()
 		
 	elseif caller == "layout" then
-		return visual:list(page:list()[props["page_index"].Value])
+		return control:layout(page[props["page_index"].Value])
 	
 	elseif caller == "runtime" then
 		return runtime
@@ -159,7 +182,8 @@ page = protect:inherit(	-- Handler for all plugin pages.
 				},
 				{
 					
-					index = t.index
+					index = t.index,
+					_isPage = true
 					
 				}
 			)
@@ -189,15 +213,13 @@ end
 
 visual = protect:inherit(
 	{
-		height = 32,
-		width = 32,
 	},
 	{
 	
 		_visualObjects = {},
 		
-		newVisual = function(self, t)
-		
+		newVisual = function(t, k, v)
+			print("Bloop!", t.controlType, k, v, not not k._isPage)
 		end,
 
 		list = function(self, t)
@@ -221,7 +243,7 @@ control = visual:inherit(
 		newControl = function(self, t)
 			assert(t and type(t) == "table" and t.name and self.controlType, "Failure to supply valid table for new.")
 			assert(not self._controlObjects[t.name], "A Control by the name '" .. t.name .. "' already exists.")
-			
+
 			local name = t.name t.name = nil	-- Make t.name to local.
 
 			control._controlObjects[name] = self:inherit(t, {name = name, _level = 0})
@@ -250,9 +272,28 @@ control = visual:inherit(
 			if getmetatable(self).__index[position] ~= nil then	-- self[k] protect agains overwrite. Is this necessary??
 				error("Unable to create index. Control index " .. position .. " already exists.", 3)	-- Cant overwrite!
 			else
-				position = position ~= nil and position or (#getmetatable(self).__index + 1)	-- Get the index for the new control.
-				t = type(t) == "table" and t or {}	-- Disard invalid table.
-				rawset(getmetatable(self).__index, position, self:inherit(t, {index = position, _level = self._level + 1}))
+				local pages = {}
+				position = position ~= nil and position or ((type(t) == "table" and t.index ~= nil) and t.index or (#getmetatable(self).__index + 1))	-- Get the index for the new control.
+				if type(t) == "table" then
+					t.index = nil	-- Ensure that index gets removed. This will be stored in the metatable.
+					if type(t[1]) == "table" then
+						for i, v in pairs(t[1]) do
+							if v._isPage then table.insert(pages, v) end
+						end
+					end
+				else
+					t = {}	-- Ensure that t is a table, and discard singular values.
+				end
+
+				rawset(getmetatable(self).__index, position, self:inherit(t, {index = position, _level = self._level + 1})) -- Maybe t should be writeable?
+
+				getmetatable(getmetatable(self).__index[position]).__newindex = function(t, k, v) rawset(t, k, t:inherit(v)) end	-- Method to create a visual instance.
+
+				for _, v in ipairs(pages) do	-- If pages are supplied in method call, then create those tables in the new object.
+					print(v.name)
+					getmetatable(self).__index[position][v] = {}
+				end
+
 				return getmetatable(self).__index[position]
 			end
 
@@ -268,8 +309,27 @@ control = visual:inherit(
 				ctl["ControlUnit"] = p.unit
 				ctl["Min"] = p.min
 				ctl["Max"] = p.max
-				ctl["Count"] = 1 -- #p
+				ctl["Count"] = #p -- #p
 				table.insert(controls, ctl)
+			end
+			return controls
+		end,
+
+		layout = function(self, page)
+			local controls = {}
+			for _, controlObject in pairs(control._controlObjects) do
+				for i, controlIndex in ipairs(controlObject) do
+					--print(controlObject.name, #controlObject, i)
+					--print(not not controlIndex[page])
+					if controlIndex[page] then
+						--print("Boo!", (#controlObject > 1) and (controlObject.name .. " " .. i) or controlObject.name)
+						controls[(#controlObject > 1) and (controlObject.name .. " " .. i) or controlObject.name] = {
+							Style = controlIndex[page].style,
+							Position = {controlIndex[page].xPos, controlIndex[page].yPos},
+							Size = {controlIndex[page].width, controlIndex[page].height},
+						}
+					end
+				end
 			end
 			return controls
 		end
@@ -328,13 +388,16 @@ function GetControls(props) return PluginDefinition("controls", props) end
 
 function GetControlLayout(props)
 	local page = props["page_index"].Value
-	return {
+	return PluginDefinition("layout", props)
+	--[[
+		return {
 		["knob1"] = {
 			Style = "Knob",
 			Position = {10, 10},
 			Size = {50, 50}
 		}
 	}, {}
+	--]]
 end
 
 
@@ -349,4 +412,16 @@ if Controls then	-- Runtime code lives here.
 	PluginDefinition("runtime")()
 else
 	PluginInfo = PluginDefinition("info")	-- Generate global PluginInfo definition. Do not remove.
+end
+
+
+
+
+
+
+
+-- Test junk:
+
+function list(t)
+	for i, v in pairs(t) do print(i, v) end
 end
