@@ -34,9 +34,12 @@ function PluginDefinition(caller, props)
 		--page:new{name = "Raw call"}			-- Define a new page without a handle.
 		--page[4] = {name = "Test"}			-- Define a new page directly. Use with caution. (page.__newindex metamethod calls page:new() to facilitate this behavour.)
 		
-		ka = knob:new{name = "knob1"}
+		ka = knob:new{name = "knob1", unit = "Integer", min = 0, max = 100}
 		--ka.min = 0
-		ka.max = 100
+		--ka.max = 100
+		ka:newIndex()
+		ka:newIndex()
+		--ka[2] = 3
 		--ka.unit = "Integer"
 		--kb = knob:new{name = "knob2"}
 		
@@ -218,20 +221,41 @@ control = visual:inherit(
 		newControl = function(self, t)
 			assert(t and type(t) == "table" and t.name and self.controlType, "Failure to supply valid table for new.")
 			assert(not self._controlObjects[t.name], "A Control by the name '" .. t.name .. "' already exists.")
-			local name = t.name t.name = nil	-- Move t.name to local.
-			control._controlObjects[name] = self:inherit(t, {name = name})	-- Perhaps t should be unprotected?
 			
-			control._controlObjects[name].__newindexold = getmetatable(control._controlObjects[name]).__newindex	-- Tricks for control indexing.
+			local name = t.name t.name = nil	-- Make t.name to local.
+
+			control._controlObjects[name] = self:inherit(t, {name = name, _level = 0})
+
+			control._controlObjects[name].__newindexupstream = getmetatable(control._controlObjects[name]).__newindex	-- Tricks for control indexing.
+
+			getmetatable(control._controlObjects[name]).__len = function(self)	-- Get length of hidden index table.
+				return #getmetatable(self).__index
+			end
+
 			getmetatable(control._controlObjects[name]).__newindex = function(t, k, v)
 				if type(k) == "number" then
-					--t:newindex()
-					error("Bugger Off!",2)
+					t:newIndex(v, k)
 				else
-					return control._controlObjects[name].__newindexold(t, k, v)
+					return control._controlObjects[name].__newindexupstream(t, k, v)
 				end
 			end
 			
 			return control._controlObjects[name]
+		end,
+
+		newIndex = function(self, t, position)	-- Create a new index of the control.
+
+			assert(self._level == 0, "Cannot index the index of a control.")
+
+			if getmetatable(self).__index[position] ~= nil then	-- self[k] protect agains overwrite. Is this necessary??
+				error("Unable to create index. Control index " .. position .. " already exists.", 3)	-- Cant overwrite!
+			else
+				position = position ~= nil and position or (#getmetatable(self).__index + 1)	-- Get the index for the new control.
+				t = type(t) == "table" and t or {}	-- Disard invalid table.
+				rawset(getmetatable(self).__index, position, self:inherit(t, {index = position, _level = self._level + 1}))
+				return getmetatable(self).__index[position]
+			end
+
 		end,
 		
 		list = function()
@@ -259,34 +283,32 @@ end
 
 knob = control:inherit(
 	{
-		blah = "blah",
-
-		-- Default values.
-		unit = "Integer",
-		min = 0,
-		max = 1,
-
 	},
 	{
 		controlType = "Knob",
 		
-		new = function(self, t)	--function(self, t) return control.newControl(t) end,
-			--assert(self == control, "Attempt to call 'new' as function instead of method. Check for correct operator (use : instead of .)")
+		new = function(self, t)
+
 			assert(
 				t.name
-				--and t.unit and (t.unit == "Hz" or t.unit == "Float" or t.unit == "Integer" or t.unit == "Pan" or t.unit == "Percent" or t.unit == "Position" or t.unit == "Seconds")
-				--and (t.min and type(t.min) == "number")
-				--and (t.max and type(t.max) == "number")
+				and t.unit and (t.unit == "Hz" or t.unit == "Float" or t.unit == "Integer" or t.unit == "Pan" or t.unit == "Percent" or t.unit == "Position" or t.unit == "Seconds")
+				and (t.min and type(t.min) == "number")
+				and (t.max and type(t.max) == "number")
 			, "Failure to supply valid table for new.")
+
 			protect.checkMethod()
+
 			local ctl = self:newControl(t)
+
 			ctl:unprotect(
 				--"controlType", -- do this only on indices.
-				"unit",
-				"min",
-				"max"
+				--"unit",
+				--"min",
+				--"max"
 			)
+
 			return ctl
+
 		end,
 	}
 )
