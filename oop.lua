@@ -351,15 +351,16 @@ knob = control:inherit(
 			assert(
 				t.name
 				and t.unit and (t.unit == "Hz" or t.unit == "Float" or t.unit == "Integer" or t.unit == "Pan" or t.unit == "Percent" or t.unit == "Position" or t.unit == "Seconds")
-				and (t.min and type(t.min) == "number")
-				and (t.max and type(t.max) == "number")
+				and t.min and (type(t.min) == "number")
+				and t.max and (type(t.max) == "number")
 			, "Failure to supply valid table for new.")
 
 			protect.checkMethod()
 
 			local ctl = self:newControl(t)
 
-			ctl:unprotect(
+			knob:unprotect(
+				ctl
 				--"controlType", -- do this only on indices.
 				--"unit",
 				--"min",
