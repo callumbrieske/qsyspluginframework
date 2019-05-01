@@ -115,7 +115,7 @@ protect = setmetatable(	-- This is the root object. It contains various universa
 		
 			inherit = function(self, localData, staticData)	-- Universal 'new' function. Other functions can be passed as tables to reside in the new object.
 				protect.checkMethod()
-				localData = localData or {}	-- Ensure the 'localData' table exists.
+				localData = type(localData) == "table" and localData or {}	-- Ensure the 'localData' table exists.
 				localData["_immutableKeys"] = setmetatable({}, {__index = self._immutableKeys})	-- Create a '_immutableKeys' value to allow keys to be immutable after the object is created.
 				return setmetatable(
 					localData,	-- This table hold data 'local' to the object. This can be changed after creation unless set as immutable after creation.
@@ -127,9 +127,10 @@ protect = setmetatable(	-- This is the root object. It contains various universa
 							}
 						),
 						__newindex = function(self, k, v)	-- Metamethod to check if key is immutable before setting. Raise an error if an overwrite is attempted on an immutable key.
-							--print("Hit!", self, k, v)
+							print("Hit!", self, k, v)
+							print(self._immutableKeys[self])
 							--if self._immutableKeys[k] ~= false and (self._immutableKeys[k] or self._immutableKeys[self] or self[k]) then	-- All by default are immutable.
-							if self._immutableKeys[k] ~= false and (self._immutableKeys[k] or self._immutableKeys[self] or self[k]) then	-- Only static is immutable.
+							if self._immutableKeys[k] ~= false and self._immutableKeys[self] ~= false and (self._immutableKeys[k] or self._immutableKeys[self] or self[k]) then	-- Only static is immutable.
 								error("Attempt to modify immutable table / key: " .. k or "", 2)
 							end
 							rawset(self, k, v)
@@ -268,12 +269,15 @@ control = visual:inherit(
 		newIndex = function(self, t, position)	-- Create a new index of the control.
 
 			assert(self._level == 0, "Cannot index the index of a control.")
+			--local cleanIndex = getmetatable(self).__index	-- Capture the deired index.
 
 			if getmetatable(self).__index[position] ~= nil then	-- self[k] protect agains overwrite. Is this necessary??
 				error("Unable to create index. Control index " .. position .. " already exists.", 3)	-- Cant overwrite!
 			else
+
 				local pages = {}
 				position = position ~= nil and position or ((type(t) == "table" and t.index ~= nil) and t.index or (#getmetatable(self).__index + 1))	-- Get the index for the new control.
+
 				if type(t) == "table" then
 					t.index = nil	-- Ensure that index gets removed. This will be stored in the metatable.
 					if type(t[1]) == "table" then
@@ -286,11 +290,25 @@ control = visual:inherit(
 				end
 
 				rawset(getmetatable(self).__index, position, self:inherit(t, {index = position, _level = self._level + 1})) -- Maybe t should be writeable?
+				--getmetatable(self).__index[position]:unprotect(getmetatable(self).__index[position])
 
-				getmetatable(getmetatable(self).__index[position]).__newindex = function(t, k, v) rawset(t, k, t:inherit(v)) end	-- Method to create a visual instance.
+				
+
+
+				
+
+				getmetatable(getmetatable(self).__index[position]).__newindex = function(t, k, v)	-- Method to create a visual instance.
+					if type(k) == "table" and k._isPage then
+						print("Its a page!")
+						rawset(t, k, t:inherit(v))
+					else
+						rawset(t, k, v)
+					end
+				end
 
 				for _, v in ipairs(pages) do	-- If pages are supplied in method call, then create those tables in the new object.
 					getmetatable(self).__index[position][v] = {}
+					--getmetatable(self).__index[position][v]:unprotect(getmetatable(self).__index[position][v])
 				end
 
 				return getmetatable(self).__index[position]
@@ -359,13 +377,7 @@ knob = control:inherit(
 
 			local ctl = self:newControl(t)
 
-			knob:unprotect(
-				ctl
-				--"controlType", -- do this only on indices.
-				--"unit",
-				--"min",
-				--"max"
-			)
+			ctl:unprotect(ctl)
 
 			return ctl
 
