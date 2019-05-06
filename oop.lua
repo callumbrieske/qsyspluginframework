@@ -290,7 +290,7 @@ control = visual:inherit(
 				end
 
 				rawset(getmetatable(self).__index, position, self:inherit(t, {index = position, _level = self._level + 1})) -- Maybe t should be writeable?
-				--getmetatable(self).__index[position]:unprotect(getmetatable(self).__index[position])
+				getmetatable(self).__index[position]:unprotect(getmetatable(self).__index[position])
 
 				
 
@@ -301,6 +301,7 @@ control = visual:inherit(
 					if type(k) == "table" and k._isPage then
 						print("Its a page!")
 						rawset(t, k, t:inherit(v))
+						t[k]:unprotect(t[k])
 					else
 						rawset(t, k, v)
 					end
