@@ -29,7 +29,8 @@ function plugin:properties(props)
 end
 
 function plugin:layout(props)
-
+    page:new{name = "Main Page"}
+    --page:new{name = "Other Page"}
 end
 
 function plugin:code()
@@ -41,18 +42,15 @@ framework = {   -- Framework boilerplate & inheritance methods.
     _metatable = {
 
         immutableLocally = {},
-
         immutableDownstream = {},
-
         immutableGlobally = {
-
             inherit = function(self, localData, immutableLocally, immutableDownstream, immutableGlobally, immutableRootKey)
                 localData = type(localData) == "table" and localData or {}    -- Ensure that we have a table for the local data.
 
                 localData._metatable = {
                     immutableLocally = setmetatable(type(immutableLocally) == "table" and immutableLocally or {}, {__index = self._metatable.immutableLocally}),
                     immutableDownstream = setmetatable(type(immutableDownstream) == "table" and immutableDownstream or {}, {__index = self._metatable.immutableDownstream}),
-                    immutableGlobally = self._metatable.immutableGlobally,  --setmetatable(type(immutableGlobally) == "table" and immutableGlobally or {}, {__index = self._metatable.immutableGlobally}),
+                    immutableGlobally = self._metatable.immutableGlobally,
 
                     __index = function(t, k)
                         print("__index", k)
@@ -63,7 +61,7 @@ framework = {   -- Framework boilerplate & inheritance methods.
                         print("__newindex", k)
                         if rawget(t._metatable.immutableLocally, k) ~= nil then
                             error("Attempt to change locally immutable key.", 2)
-                        elseif rawget(t._metatable.immutableDownstream, k) ~= nil then
+                        elseif t._metatable.immutableDownstream[k] ~= nil then
                             error("Attempt to change upstream immutable key.", 2)
                         elseif t._metatable.immutableGlobally[k] ~= nil then
                             error("Attempt to change globally immutable key.", 2)
@@ -75,12 +73,12 @@ framework = {   -- Framework boilerplate & inheritance methods.
                     end,
                 }
 
-                if type(immutableGlobally) == "table" then
+                if type(immutableGlobally) == "table" then   -- Copy globals to global metatable.
                     for k, v in pairs(immutableGlobally) do
                         if localData._metatable.immutableGlobally[k] then
                             error("Attempt to change globally immutable root key.", 2)
                         end
-                        localData._metatable.immutableGlobally[k] = v   -- Copy globals to global metatable.
+                        localData._metatable.immutableGlobally[k] = v
                     end
                 end
 
@@ -93,11 +91,159 @@ framework = {   -- Framework boilerplate & inheritance methods.
 }
 framework = framework._metatable.immutableGlobally.inherit(framework, nil, nil, nil, framework, true)    -- Make framework immutable.
 
+page = framework:inherit(
+    {   -- Local table.
+
+    },
+    {   -- Immutable Locally.
+
+    },
+    {   -- Immutable Downstream.
+        _isPage = true,
+
+        new = function(self, t)
+            if self ~= page then error("Attempt to call 'new' as function instead of method. Check for correct operator (use : instead of .)", 2) end
+            if not t or type(t) ~= "table" or not t.name then error("Failure to supply valid table for new.", 2) end
+
+            t.index = t.index or (#self + 1)
+            print(t.index)
+            rawset(self, t.index, self:inherit(
+				{   -- Local table.
+
+                    name = t.name
+
+                },
+                {   -- Immutable Locally.
+
+                },
+				{   -- Immutable Downstream.
+
+				}
+            ))
+			return self[t.index]	-- Return a handle to the new page.
+        end,
+
+        list = function()	-- Return a clean array of all pages.
+			local pages = {}
+			for i, p in ipairs(page) do	-- Iterate through the 'page' table, and pass just the page.name.
+				table.insert(pages, {name = p.name})
+			end
+			return pages
+		end
+
+    },
+    {   -- Immutable Global Table.
+
+    }
+)
+--page._metatable.__newindex = function() print("beep") end
+
+--[[
+page = framework:inherit(	-- Handler for all plugin pages.
+	{
+	},
+	{
+		
+		_pageObjects = {},	-- Table to hold the 'page' objects. This is protected from direct access.
+		
+		new = function(self, t)	-- Create a new page. This will return an optional handle to the page.
+			assert(self == page, "Attempt to call 'new' as function instead of method. Check for correct operator (use : instead of .)")
+			assert(t and type(t) == "table" and t.name, "Failure to supply valid table for new.")
+			t.index = t.index or (#self._pageObjects + 1)
+			--self._pageObjects[t.index] = getmetatable(getmetatable(page).__index).__index:new({name = t.name},{index = t.index})	-- Longhand way to make inheritance work when overwriting key.
+			self._pageObjects[t.index] = self:inherit(
+				{
+					
+					name = t.name
+					
+				},
+				{
+					
+					index = t.index,
+					_isPage = true
+					
+				}
+			)
+			rawset(self, t.index, self._pageObjects[t.index])
+			return self[t.index]	-- Return a handle to the new page.
+		end,
+		
+		list = function()	-- Return a clean array of all pages.
+			local pages = {}
+			for i, p in ipairs(page) do	-- Iterate through the 'page' table, and pass just the page.name.
+				table.insert(pages, {name = p.name})
+			end
+			return pages
+		end
+		
+	}
+)
+getmetatable(page).__newindex = function(t, k, v) 
+	--print(t, k, v, type(k))
+	if type(k) == "number" and v.name and type(v.name) == "string" then	-- Allow direct indexing via page[x] = {name = "new page"}
+		page:new{name = v.name, index = k}
+	else
+		error("Invalid attempt to index page. Use page:new{} method.")
+	end
+end
+--]]
+
+
+
+
+--[[
+page = framework:inherit(
+    {   -- Local table.
+
+    },
+    {   -- Immutable Locally.
+
+    },
+    {   -- Immutable Downstream.
+
+    },
+    {   -- Immutable Global Table.
+
+    }
+)
+--]]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 --t = framework:inherit({c = "tr"}, {a = "a"}, {b = "c"})
-t = framework:inherit({a = "a"},{b = "b"},{c = "c"})
-d = t:inherit(nil, nil, {c = "see!"})
+--t = framework:inherit({a = "a"},{b = "b"},{c = "c"})
+--d = t:inherit(nil, nil, {c = "see!"})
 
+--page:new()
 
 
 
@@ -118,12 +264,6 @@ function plugin:controls(props)
     --return controlsmethod
 end
 
-function plugin:pages(props)
-    if not self._layoutDefined then self:layout(props) end
-    self._layoutDefined = true
-    --return pagemethod
-end
-
 function plugin:canvas(props)
     if not self._layoutDefined then self:layout(props) end
     self._layoutDefined = true
@@ -131,10 +271,17 @@ function plugin:canvas(props)
 end
 
 if Controls then plugin:code() else PluginInfo = plugin:definition() end    -- If Controls have been defined run code, otherwise supply plugin definition to QSD.
-function GetPrettyName(props) return plugin.prettyName end  -- Supply the prettyName to QSD.
-function GetProperties(props) return plugin:properties(props) end    -- Supply properties definition to QSD.
-function GetControls(props) return plugin:controls(props) end -- Supply controls definition to QSD.
-function GetControlLayout(props) return plugin:canvas(props) end    -- Supply layout information to QSD.
+function GetPrettyName(props) return plugin.prettyName end                  -- Supply the prettyName to QSD.
+function GetProperties(props) return plugin:properties(props) end           -- Supply properties definition to QSD.
+
+function GetPages(props)                                                    -- Supply page definitions to QDS.
+    if not plugin._layoutDefined then plugin:layout(props) end
+    plugin._layoutDefined = true
+    return page:list()
+end
+
+function GetControls(props) return plugin:controls(props) end               -- Supply controls definition to QSD.
+function GetControlLayout(props) return plugin:canvas(props) end            -- Supply layout information to QSD.
 
 
 
