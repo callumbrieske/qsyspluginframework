@@ -19,7 +19,6 @@ function plugin:definition()
     -- Setting this to true will show the Lua debug window at the bottom of the UI.
     self.showDebug = true
 
-
     self._pluginDefined = true
     return {Name = self.name, Description = self.description, Version = self.version, Id = self.guid, ShowDebug = self.showDebug}
 end
@@ -30,9 +29,18 @@ end
 
 function plugin:layout(props)
     myPage = page:new{name = "Main Page"}   -- Create a page and capture its handle.
-    page[2] = {name = "Other Page"}         -- Alternatively we can index 'page' directly.
     page:new{name = "Last Page"}            -- We can also create a page without capturing its handle.
     page[200] = {name = "New Last Page"}    -- The page array can also have 'holes' in it.
+    page[20] = {name = "Other Page-"}         -- Alternatively we can index 'page' directly.
+
+    myPage.name = "Hello"
+    a = knob:new{name = "a", unit = "Integer", min = 0, max = 10}
+
+    for i = 1, 5, 1 do
+        a[i][myPage] = {hPos = i * 50}
+    end
+
+    a[2][page[20]] = {vPos = 100, hPos = 50}
 
     
 end
@@ -55,17 +63,30 @@ framework = {   -- Framework boilerplate & inheritance methods.
                 localData._metatable = type(localData._metatable) == "table" and localData._metatable or {}    -- Ensure that we have a table for the local data.
 
                 local _metatable = {
+                    parent = self,
                     immutableLocally = setmetatable(type(immutableLocally) == "table" and immutableLocally or {}, {__index = self._metatable.immutableLocally}),
                     immutableDownstream = setmetatable(type(immutableDownstream) == "table" and immutableDownstream or {}, {__index = self._metatable.immutableDownstream}),
                     immutableGlobally = self._metatable.immutableGlobally,
 
                     __index = function(t, k)
                         print("__index", t, k)
-                        return rawget(self, k) or t._metatable.immutableLocally[k] or t._metatable.immutableDownstream[k] or t._metatable.immutableGlobally[k]
+
+                        local function get(t, k)    -- Fix to get localData inheritance without invoking special metamethods.
+                            if t then
+                                if rawget(t, k) or t == t._metatable.parent then
+                                    return rawget(t, k)
+                                else
+                                    return get(t._metatable.parent, k)
+                                end
+                            end
+                        end
+
+                        --return rawget(self, k) or t._metatable.immutableLocally[k] or t._metatable.immutableDownstream[k] or t._metatable.immutableGlobally[k]
+                        return get(t, k) or t._metatable.immutableLocally[k] or t._metatable.immutableDownstream[k] or t._metatable.immutableGlobally[k]
                     end,
 
                     __newindex = function(t, k, v)
-                        print("__newindex", t, k)
+                        --print("__newindex", t, k)
                         if rawget(t._metatable.immutableLocally, k) ~= nil then
                             error("Attempt to change locally immutable key.", 2)
                         elseif t._metatable.immutableDownstream[k] ~= nil then
@@ -94,9 +115,45 @@ framework = {   -- Framework boilerplate & inheritance methods.
 
                 return setmetatable(localData, localData._metatable)
             end,
+
+            copyTable = function(dest, source)  -- Copy table contents invoking metamethods.
+                if type(source) == "table" then
+                    for k, v in pairs(source) do
+                        dest[k] = v
+                    end
+                end
+            end,
+
+            packArray = function(self, a)   -- This is pretty gross. There is probably a much cleaner way to do this.
+                local tab = {}
+                for i, v in pairs(a) do
+                    if type(i) == "number" then
+                        local cnt = 1
+                        while (tab[cnt] and tab[cnt][1] < i) do
+                            cnt = cnt + 1
+                        end  
+                        table.insert(tab, cnt, {i, v})
+                    end
+                end
+                a = {}
+                for i, v in ipairs(tab) do
+                    a[i] = v[2]
+                end
+                return a
+            end,
+
+            checkType = function(self, t, v)    -- Ensure 'v' is of the type 't', otherwise teturn nil.
+                return type(v) == t and v or nil
+            end,
+
+            number = function(self, v) return self:checkType("number", v) or 0 end, -- Check v is integer.
+
+            string = function(self, v) return self:checkType("string", v) or "" end, -- Check v is string.
         },
 
     },
+
+    bleh = 7
 
 }
 framework = framework._metatable.immutableGlobally.inherit(framework, nil, nil, nil, framework, true)    -- Make framework immutable.
@@ -111,16 +168,51 @@ visual = framework:inherit(
     {   -- Immutable Downstream.
         _type = "visual prototype",
 
-        newInstance = function(self, p, t)
+        newInstance = function(self, t)
             if self._type ~= "control index" then error("Only control indices can have instances. eg myKnob[1]:newInstance{{page1}, hPos = 10, vPos = 20}", 2) end -- Is this example correct?
+            if not t or type(t) ~= "table" then error("Invalid argument. Table expected, got " .. type(t), 2) end
+            if not t[1] then error("No pages supplied.", 2) end
+            
             local function checkPage(v) if type(v) ~= "table" or v._type ~= "page" then error("Invalid page. A new instance can only exist on a page.", 2) end end
-            if type(p) == "table" and #p > 0 then
-                for _, v in pairs(p) do
-                    checkPage(v)
+            local pageCnt, handle = 0, nil
+
+            local function createInstance(page, t)
+                pageCnt = pageCnt + 1
+                if rawget(self, page) then error("This control already exists on '" .. page.name .. "'.", 2) end
+                rawset(self, page, self:inherit(
+                    --{   -- Local table.
+                    --}
+                    {},
+                    {   -- Immutable Locally.
+                
+                    },
+                    {   -- Immutable Downstream.
+                        _type = "visual instance"
+                    },
+                    {   -- Immutable Global Table.
+                
+                    }
+                ))
+
+                self[page]:copyTable(t)  -- Copy table contents invoking metamethods.
+
+                return self[page]
+            end
+
+            local pages = t[1] t[1] = nil   -- Make pages local.
+
+            if type(pages) == "table" and #pages > 0 then   -- Make sure we have a valid page table.
+                for _, page in pairs(pages) do
+                    checkPage(page)
+                    createInstance(pages, t)
                 end
             else
-                checkPage(v)
+                checkPage(pages)
+                handle = createInstance(pages, t)    -- If we were only supplied a single page, we can return a handle.
             end
+
+            if pageCnt < 1 then error("No pages supplied.", 2) end
+            return handle
         end
     },
     {   -- Immutable Global Table.
@@ -153,13 +245,17 @@ page = visual:inherit(
 			return self[t.index]	-- Return a handle to the new page.
         end,
 
-        list = function()	-- Return a clean array of all pages.
+        list = function(self)	-- Return a clean array of all pages.
 			local pages = {}
-            for i, p in pairs(page) do	-- Iterate through the 'page' array, and pass just the page.name.
+            for i, p in pairs(self:packArray(page)) do	-- Iterate through the 'page' array, and pass just the page.name.
                 if type(i) == "number" and p~= nil then table.insert(pages, {name = p.name}) end
 			end
 			return pages
-		end
+        end,
+        
+        currentPage = function(self, idx)	-- Return the currently active page object.
+            return self:packArray(page)[idx]
+        end
 
     }
 )
@@ -180,65 +276,85 @@ control = visual:inherit(
             if not t.name or type(t.name) ~= "string" or t.name:len() < 1 then error("Failed to supply valid name for new control.", 2) end
             if control._metatable.immutableDownstream._controlObjects[t.name] then error("Control \"" .. t.name .. "\" already exists.", 2) end
 
-            local name = t.name t.name = nil	-- Make t.name local.
+            --local name = t.name --t.name = nil	-- Make t.name local.
 
-            t._metatable = {
-                __index = function(t, k)    -- Special metamethod to allow calling empty indexes instead on newIndex method.
-                    if type(k) == "number" then
-                        return self._metatable.immutableDownstream.newIndex(t, {}, k)   -- Index array using newIndex method.
-                    else
-                        return control._metatable.__index(t, k)    -- Index table using upstream method.
-                    end
-                end,
+            t._type = "control"
 
-                __newindex = function(t, k, v)  -- Special metamethod to handle direct indexig.
-                    if type(k) == "number" then
-                        return self._metatable.immutableDownstream.newIndex(t, v, k)   -- Index array using newIndex method.
-                    else
-                        return control._metatable.__newindex(t, k, v)    -- Index table using upstream method.
-                    end
-                end,
-            }
-
-            control._metatable.immutableDownstream._controlObjects[name] = self:inherit(
-                t,   -- Local table.
+            control._metatable.immutableDownstream._controlObjects[t.name] = self:inherit(
+                {   -- Local table.
+                    _metatable = {
+                        __index = function(t, k)    -- Special metamethod to allow calling empty indexes instead on newIndex method.
+                            if type(k) == "number" then
+                                return self._metatable.immutableDownstream.newIndex(t, {}, k)   -- Index array using newIndex method.
+                            else
+                                return control._metatable.__index(t, k)    -- Index table using upstream method.
+                            end
+                        end,
+        
+                        __newindex = function(t, k, v)  -- Special metamethod to handle direct indexig.
+                            if type(k) == "number" then
+                                return self._metatable.immutableDownstream.newIndex(t, v, k)   -- Index array using newIndex method.
+                            else
+                                return control._metatable.__newindex(t, k, v)    -- Index table using upstream method.
+                            end
+                        end,
+                    }
+                },
                 {   -- Immutable Locally.
                     --new = {},   -- Blank table to block method downstream. Why did I put this here?
                 },
-                {   -- Immutable Downstream.
-                    name = name,    -- Name cannot be changed after definition.
-                    _type = "control"
-                },
+                --{   -- Immutable Downstream.
+                --    name = name,    -- Name cannot be changed after definition.
+                --    _type = "control"
+                --},
+                t,
                 {   -- Immutable Global Table.
             
                 }
             )
-            return control._metatable.immutableDownstream._controlObjects[name]
+
+            return control._metatable.immutableDownstream._controlObjects[t.name]
         end,
 
         newIndex = function(self, t, position)	-- Create a new index of the control.
             if self._type ~= "control" then error("Only control objects can be indexed.", 2) end
             if t and type(t) ~= "table" then error("Invalid argument. Table expected, got " .. type(t), 2) end
-
-            local pages = {}
+            
             local position = position ~= nil and position or ((type(t) == "table" and t.index ~= nil) and t.index or (#self + 1))	-- Get the index for the new control.
             
-            if type(t) == "table" then
-                t.index = nil	-- Ensure that index gets removed. This will be stored in the metatable.
-                if type(t[1]) == "table" then
-                    for i, v in pairs(t[1]) do
-                        if v._isPage then table.insert(pages, v) end
-                    end
-                end
-            else
-                t = {}	-- Ensure that t is a table.
-            end
+            t = type(t) == "table" and t or {}  -- Ensure t is a table.
+            t.index = nil   -- Ensure that t.index isnt passed to new object.
 
-            print(position)
+            if rawget(self, position) then error("Index alread exists", 2) end            
 
+            -- Rawset to prevent invoking special metamethods.
             rawset(self, position, self:inherit(
                 {   -- Local table.
-            
+                    _metatable = {
+                        ---[[ We probably dont need this method. It works, but is kind of pointless.
+                        __index = function(t, k)    -- Special metamethod to allow calling empty indexes instead on newIndex method.
+                            if type(k) == "table" and k._type == "page" then
+                                print("This is a page!")
+                                return self._metatable.immutableDownstream.newInstance(t, {k})   -- Index array using newIndex method.
+                            else
+                                return control._metatable.__index(t, k)    -- Index table using upstream method.
+                            end
+                        end,
+                        --]]
+        
+                        __newindex = function(t, k, v)  -- Special metamethod to handle direct indexig.
+                            if type(k) == "table" and k._type == "page" then
+                                if type(v) == "table" then
+                                    v[1] = k
+                                else
+                                    v = {k}
+                                end
+                                return self._metatable.immutableDownstream.newInstance(t, v)   -- Index array using newIndex method.
+                            else
+                                return control._metatable.__newindex(t, k, v)    -- Index table using upstream method.
+                            end
+                        end,
+                    }
                 },
                 {   -- Immutable Locally.
 
@@ -252,73 +368,50 @@ control = visual:inherit(
                 }
             ))
 
+            self[position]:copyTable(t)
+
             return self[position]
-
-			--local cleanIndex = getmetatable(self).__index	-- Capture the deired index.
-            
-            --[[
-			if getmetatable(self).__index[position] ~= nil then	-- self[k] protect agains overwrite. Is this necessary??
-				error("Unable to create index. Control index " .. position .. " already exists.", 3)	-- Cant overwrite!
-			else
-
-				local pages = {}
-				position = position ~= nil and position or ((type(t) == "table" and t.index ~= nil) and t.index or (#getmetatable(self).__index + 1))	-- Get the index for the new control.
-
-				if type(t) == "table" then
-					t.index = nil	-- Ensure that index gets removed. This will be stored in the metatable.
-					if type(t[1]) == "table" then
-						for i, v in pairs(t[1]) do
-							if v._isPage then table.insert(pages, v) end
-						end
-					end
-				else
-					t = {}	-- Ensure that t is a table, and discard singular values.
-				end
-
-				rawset(getmetatable(self).__index, position, self:inherit(t, {index = position, _level = self._level + 1})) -- Maybe t should be writeable?
-				getmetatable(self).__index[position]:unprotect(getmetatable(self).__index[position])
-
-				
-
-
-				
-
-				getmetatable(getmetatable(self).__index[position]).__newindex = function(t, k, v)	-- Method to create a visual instance.
-					if type(k) == "table" and k._isPage then
-						print("Its a page!")
-						rawset(t, k, t:inherit(v))
-						t[k]:unprotect(t[k])
-					else
-						rawset(t, k, v)
-					end
-				end
-
-				for _, v in ipairs(pages) do	-- If pages are supplied in method call, then create those tables in the new object.
-					getmetatable(self).__index[position][v] = {}
-					--getmetatable(self).__index[position][v]:unprotect(getmetatable(self).__index[position][v])
-				end
-
-                return getmetatable(self).__index[position]
-                
-			end
-            --]]
         end,
 
-        list = function()
+        list = function()   -- Return an array formatted for GetControls.
 			local controls = {}
 			for name, p in pairs(control._metatable.immutableDownstream._controlObjects) do	-- Iterate through the '_controlObjects' table, build the control definitions table.
 				print(name, p.unit, p.min, p.max, #p)
 				local ctl = {}
 				ctl["Name"] = name
-				ctl["ControlType"] = p.controlType
+				ctl["ControlType"] = p._controlType
 				ctl["ControlUnit"] = p.unit
 				ctl["Min"] = p.min
 				ctl["Max"] = p.max
-				ctl["Count"] = #p -- #p
+				ctl["Count"] = #p
 				table.insert(controls, ctl)
 			end
 			return controls
-		end,
+        end,
+
+        layout = function(self, page)   -- Return a table formatted for GetControlLayout.
+            print(page.name)
+            local controls = {}
+            for _, controlObject in pairs(control._metatable.immutableDownstream._controlObjects) do
+                for i, controlIndex in pairs(controlObject) do  -- Using 'pairs' to prevent invoking special __index methods.
+                    --print(i)
+                    --print("Tick", controlObject.name, #controlObject, i)
+                    --print(not not controlIndex[page])
+                    ---[[
+                    if rawget(controlIndex, page) then
+                        print("Boo!", (#controlObject > 1) and (controlObject.name .. " " .. i) or controlObject.name)
+                        controls[(#controlObject > 1) and (controlObject.name .. " " .. i) or controlObject.name] = {
+                            Style = controlIndex[page].style,
+                            Position = {self:number(controlIndex[page].hPos), self:number(controlIndex[page].vPos)},
+                            Size = {self:number(controlIndex[page].width), self:number(controlIndex[page].height)},
+                        }
+                    end
+                    --]]
+                end
+            end
+            return controls
+        end,
+
     },
     {   -- Immutable Global Table.
 
@@ -327,7 +420,9 @@ control = visual:inherit(
 
 knob = control:inherit(
     {   -- Local table.
-
+        style = "Knob",
+        width = 32,
+        height = 32,
     },
     {   -- Immutable Locally.
 
@@ -383,7 +478,7 @@ page = framework:inherit(
 
 
 
-
+--[[
 myPage = page:new{name = "Main Page"}   -- Create a page and capture its handle.
 a = knob:new{name = "a", unit = "Integer", min = 0, max = 10}
 b = knob:new{name = "b", unit = "Integer", min = 0, max = 10}
@@ -391,6 +486,8 @@ c = knob:new{name = "c", unit = "Integer", min = 0, max = 10}
 d = knob:new{name = "d", unit = "Integer", min = 0, max = 10}
 
 
+a[1][myPage] = {}
+--]]
 
 
 
@@ -424,12 +521,12 @@ end
 function GetControls(props)                                                 -- Supply controls definition to QSD.
     if not plugin._layoutDefined then plugin:layout(props) end
     plugin._layoutDefined = true
-    --return controlsmethod
+    return control:list()
 end
 function GetControlLayout(props)                                            -- Supply layout information to QSD.
     if not plugin._layoutDefined then plugin:layout(props) end
     plugin._layoutDefined = true
-    --return layoutmethod
+    return control:layout(page:currentPage(props["page_index"].Value))
 end
 
 
