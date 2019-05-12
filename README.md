@@ -96,7 +96,7 @@ myControl:newIndex{index = 1, width = 50}
 myControl[1] = {width = 50}
 ```
 
-Each control __MUST__ have at least one 'index'. Controls with a single 'index' are refenced  in runtime using `Controls["Control Name"]`. Controls with multiple indexes become an array, and are indexed using `Controls["Controls Name"][index]`.
+Each control __MUST__ have at least one 'index'. Controls with a single 'index' are refenced  in runtime using `Controls["Control Name"]`. Controls with multiple indexes become an array, and are referenced using `Controls["Controls Name"][index]`.
 
 ## Control Visual Instances
 
