@@ -1,26 +1,22 @@
 local plugin = {}
 function plugin:definition()
-
     -- A unique hyphenated GUID. (guidgenerator.com)
-    self.guid = "dda1b925-231a-4960-887e-410879395f04"
+    plugin.guid = "dda1b925-231a-4960-887e-410879395f04"
 
     -- A version number string. A differing version string will prompt the user whether to upgrade.
-    self.version = "0.1.1"
+    plugin.version = "0.1.1"
 
     -- Name that will appear in the Schematic Library. (Putting ~ inbetween words makes second word the name in a folder called by the first word.)
-    self.name = "My New Object Oriented Plugin v" .. self.version
+    plugin.name = "My New Object Oriented Plugin v" .. self.version
 
     -- Name that will appear on the plugin icon, and in the title bar. (This is optional. If not supplied plugin.name will be used.)
-    self.prettyName = "My New Object Oriented Plugin With A Pretty Name"
+    plugin.prettyName = "My New Object Oriented Plugin With A Pretty Name"
 
     -- This message may be seen when a version mismatch occurs.
-    self.description = "A plugin where all control & graphic elements are objects"
+    plugin.description = "A plugin where all control & graphic elements are objects"
 
     -- Setting this to true will show the Lua debug window at the bottom of the UI.
-    self.showDebug = true
-
-    self._pluginDefined = true
-    return {Name = self.name, Description = self.description, Version = self.version, Id = self.guid, ShowDebug = self.showDebug}
+    plugin.showDebug = true
 end
 
 function plugin:properties(props)
@@ -42,7 +38,7 @@ function plugin:layout(props)
 
     a[2][page[20]] = {vPos = 100, hPos = 50}
 
-    
+
 end
 
 function plugin:code()
@@ -157,6 +153,22 @@ framework = {   -- Framework boilerplate & inheritance methods.
 
 }
 framework = framework._metatable.immutableGlobally.inherit(framework, nil, nil, nil, framework, true)    -- Make framework immutable.
+
+property = framework:inherit(
+    {   -- Local table.
+    },
+    {   -- Immutable Locally.
+
+    },
+    {   -- Immutable Downstream.
+        new = function(self, t)
+
+        end
+    },
+    {   -- Immutable Global Table.
+
+    }
+)
 
 visual = framework:inherit(
     {   -- Local table.
@@ -445,7 +457,13 @@ knob = control:inherit(
     }
 )
 
-if Controls then plugin:code() else PluginInfo = plugin:definition() end    -- If Controls have been defined run code, otherwise supply plugin definition to QSD.
+if Controls then    -- If Controls have been defined run code, otherwise supply plugin definition to QSD.
+    plugin:code()
+else
+    plugin:definition()
+    plugin._pluginDefined = true
+    PluginInfo =  {Name = plugin.name, Description = plugin.description, Version = plugin.version, Id = plugin.guid, ShowDebug = plugin.showDebug}
+end
 function GetPrettyName(props)                                               -- Supply the prettyName to QSD.
     return plugin.prettyName or plugin.name
 end
