@@ -1,6 +1,15 @@
 # Q-Sys Object Oriented Plugin Framework
 
-An object oriented framework for plugin development in the Q-Sys Lua environment.
+An object oriented framework for plugin development in the Q-Sys Lua environment. This is a work in progress. Only very basic features are implemented. The following features are intended for a future release:
+
+### Features
+
+1. Simple & concise plugin definition. __DONE__
+1. Single line page defintion.  __DONE__
+1. Single line control definition. __DONE__
+1. Single line property creation & rectification.
+1. Simple alighment method such as pack and distribute for control and graphic elements.
+1. Other things as they are thought of...
 
 ### TODO
 
@@ -9,6 +18,7 @@ An object oriented framework for plugin development in the Q-Sys Lua environment
 1. Add support for plugin properties.
 1. Add support for the RectifyProperties() function.
 1. Add support from graphic elements.
+1. Refactor plugin:definition() code to remove the requirement to return the data. This will make this section cleaner.
 
 # Documentation
 
