@@ -1,4 +1,4 @@
-plugin = {}
+local plugin = {}
 function plugin:definition()
 
     -- A unique hyphenated GUID. (guidgenerator.com)
@@ -31,7 +31,7 @@ function plugin:layout(props)
     myPage = page:new{name = "Main Page"}   -- Create a page and capture its handle.
     page:new{name = "Last Page"}            -- We can also create a page without capturing its handle.
     page[200] = {name = "New Last Page"}    -- The page array can also have 'holes' in it.
-    page[20] = {name = "Other Page-"}         -- Alternatively we can index 'page' directly.
+    page[20] = {name = "Other Page"}         -- Alternatively we can index 'page' directly.
 
     myPage.name = "Hello"
     a = knob:new{name = "a", unit = "Integer", min = 0, max = 10}
@@ -69,7 +69,7 @@ framework = {   -- Framework boilerplate & inheritance methods.
                     immutableGlobally = self._metatable.immutableGlobally,
 
                     __index = function(t, k)
-                        print("__index", t, k)
+                        --print("__index", t, k)    -- Degub __index calls.
 
                         local function get(t, k)    -- Fix to get localData inheritance without invoking special metamethods.
                             if t then
@@ -86,7 +86,7 @@ framework = {   -- Framework boilerplate & inheritance methods.
                     end,
 
                     __newindex = function(t, k, v)
-                        --print("__newindex", t, k)
+                        --print("__newindex", t, k) -- Debug __newindex calls.
                         if rawget(t._metatable.immutableLocally, k) ~= nil then
                             error("Attempt to change locally immutable key.", 2)
                         elseif t._metatable.immutableDownstream[k] ~= nil then
@@ -252,10 +252,10 @@ page = visual:inherit(
 			end
 			return pages
         end,
-        
+
         currentPage = function(self, idx)	-- Return the currently active page object.
             return self:packArray(page)[idx]
-        end
+        end,
 
     }
 )
@@ -376,7 +376,7 @@ control = visual:inherit(
         list = function()   -- Return an array formatted for GetControls.
 			local controls = {}
 			for name, p in pairs(control._metatable.immutableDownstream._controlObjects) do	-- Iterate through the '_controlObjects' table, build the control definitions table.
-				print(name, p.unit, p.min, p.max, #p)
+				--print(name, p.unit, p.min, p.max, #p)   -- Debug contrlol listing,
 				local ctl = {}
 				ctl["Name"] = name
 				ctl["ControlType"] = p._controlType
@@ -390,7 +390,6 @@ control = visual:inherit(
         end,
 
         layout = function(self, page)   -- Return a table formatted for GetControlLayout.
-            print(page.name)
             local controls = {}
             for _, controlObject in pairs(control._metatable.immutableDownstream._controlObjects) do
                 for i, controlIndex in pairs(controlObject) do  -- Using 'pairs' to prevent invoking special __index methods.
@@ -446,72 +445,15 @@ knob = control:inherit(
     }
 )
 
-
---[[
-page = framework:inherit(
-    {   -- Local table.
-
-    },
-    {   -- Immutable Locally.
-
-    },
-    {   -- Immutable Downstream.
-
-    },
-    {   -- Immutable Global Table.
-
-    }
-)
---]]
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
---[[
-myPage = page:new{name = "Main Page"}   -- Create a page and capture its handle.
-a = knob:new{name = "a", unit = "Integer", min = 0, max = 10}
-b = knob:new{name = "b", unit = "Integer", min = 0, max = 10}
-c = knob:new{name = "c", unit = "Integer", min = 0, max = 10}
-d = knob:new{name = "d", unit = "Integer", min = 0, max = 10}
-
-
-a[1][myPage] = {}
---]]
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 if Controls then plugin:code() else PluginInfo = plugin:definition() end    -- If Controls have been defined run code, otherwise supply plugin definition to QSD.
 function GetPrettyName(props)                                               -- Supply the prettyName to QSD.
     return plugin.prettyName or plugin.name
 end
 function GetProperties(props)                                               -- Supply properties definition to QSD.
     return plugin:properties(props)
+end
+function RectifyProperties(props)                                           -- Decide which properties should be hidden.
+    return props    -- Add method to rectify the properties.
 end
 function GetPages(props)                                                    -- Supply page definitions to QDS.
     if not plugin._layoutDefined then plugin:layout(props) end
