@@ -19,8 +19,8 @@ function plugin:definition()
     plugin.showDebug = true
 end
 
-function plugin:properties(props)
-
+function plugin:properties()
+    property:number{min = 0, max = 10, name = "myprop"}
 end
 
 function plugin:layout(props)
@@ -42,7 +42,7 @@ function plugin:layout(props)
 end
 
 function plugin:code()
-    print("Wow! Our Runtime code works!")
+    print("Wow! Our Runtime code works!", myPage.name)
 end
 
 framework = {   -- Framework boilerplate & inheritance methods.
@@ -161,9 +161,48 @@ property = framework:inherit(
 
     },
     {   -- Immutable Downstream.
-        new = function(self, t)
+        _props = {},
 
-        end
+        new = function(self, t)
+            if self ~= property then error("Invalid call. Must be used as method. Eg. property:integer{}") end
+            if not t or type(t) ~= "table" then error("Invalid argument. Table expected, got " .. type(t), 2) end
+            if not t.name and type(t.name) ~= "string" then error("Failure to supply valid name for property.", 2) end
+            if property._metatable.immutableDownstream._props[t.name] then error("A property named \"" .. t.name .. "\" already exists.", 2) end
+            t.Value = nil   -- Ensure a value cant be supplied during definition.
+
+            property._metatable.immutableDownstream._props[t.name] = t  -- Move table to new _props object.
+            return property._metatable.immutableDownstream._props[t.name] -- Return handle for new property.
+        end,
+
+        number = function(self, t)
+            if not t or type(t) ~= "table" then error("Invalid argument. Table expected, got " .. type(t), 2) end
+            if not t.min or type(t.min) ~= "number" then error("Failure to supply 'min' for new integer property.", 2) end
+            if not t.max or type(t.max) ~= "number" then error("Failure to supply 'max' for new integer property.", 2) end
+            t.type = "double"   -- Do we need to differentiate between 'integer' and 'double' types?
+            return self:new(t)
+        end,
+
+        list = function(self)
+            if not plugin._propsDefined then plugin:properties() end
+            local props = {}
+            for i, v in pairs(property._metatable.immutableDownstream._props) do
+                print(i, v)
+                table.insert(props,
+                {
+                    Name = v.name,
+                    Type = v.type,
+                    Value = v.default,
+                    Min = (type(v.type) == "double" or type(v.type) == "integer") and v.min or nil,
+                    Max = (type(v.type) == "double" or type(v.type) == "integer") and v.max or nil,
+                    Choices = (type(v.type) == "enum") and v.choices,
+                })
+            end
+            plugin._propsDefined = true
+            return props
+        end,
+
+        rectify = function(self, props)
+        end,
     },
     {   -- Immutable Global Table.
 
@@ -468,10 +507,10 @@ function GetPrettyName(props)                                               -- S
     return plugin.prettyName or plugin.name
 end
 function GetProperties(props)                                               -- Supply properties definition to QSD.
-    return plugin:properties(props)
+    return property:list(props)
 end
 function RectifyProperties(props)                                           -- Decide which properties should be hidden.
-    return props    -- Add method to rectify the properties.
+    return props --property:rectify(props)
 end
 function GetPages(props)                                                    -- Supply page definitions to QDS.
     if not plugin._layoutDefined then plugin:layout(props) end
