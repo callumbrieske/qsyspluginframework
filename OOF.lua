@@ -1,53 +1,45 @@
-local plugin = {}
+local plugin = {}   -- Do not remove.
+
 function plugin:definition()
-    -- A unique hyphenated GUID. (guidgenerator.com)
+    -- A unique hyphenated GUID. See http://guidgenerator.com/
     plugin.guid = "dda1b925-231a-4960-887e-410879395f04"
 
-    -- A version number string. A differing version string will prompt the user whether to upgrade.
-    plugin.version = "0.1.1"
+    -- A version number string. A differing version string will prompt the user whether to upgrade. See https://semver.org/
+    plugin.version = "1.0.0"
 
     -- Name that will appear in the Schematic Library. (Putting ~ inbetween words makes second word the name in a folder called by the first word.)
-    plugin.name = "My New Object Oriented Plugin v" .. self.version
+    plugin.name = "My Object Oriented Plugin v" .. self.version -- We can append the version number for convenience.
 
     -- Name that will appear on the plugin icon, and in the title bar. (This is optional. If not supplied plugin.name will be used.)
-    plugin.prettyName = "My New Object Oriented Plugin With A Pretty Name"
+    plugin.prettyName = "My Object Oriented Plugin With A Pretty Name"
 
     -- This message may be seen when a version mismatch occurs.
-    plugin.description = "A plugin where all control & graphic elements are objects"
+    --plugin.description = "A plugin where all control & graphic elements are objects"
 
     -- Setting this to true will show the Lua debug window at the bottom of the UI.
     plugin.showDebug = true
 end
 
 function plugin:properties()
-    property:string{name = "A Pretty String", value = "Hurro!"}
-    property:boolean{name = "Bool"}
-    property:combo{name = "combobox", choices = {"One", "sdf", "sdsdfff"}}
-    prop = property:number{min = 0, max = 10, value = 7, name = "prop"}
-    property:number{min = 0, max = 10, name = "rect", rectify = function(self) if prop.value > 5 then self.hidden = true end end}
+    show = property:boolean{name = "Show other properties?", value = false}
+    property:string{name = "My String", value = "A pretty sentence", rectify = function(self) self.hidden = not show.value end}
+    property:combo{name = "My ComboBox", choices = {"a", "b", "c"}, value = "a", rectify = function(self) self.hidden = not show.value end}
 end
 
 function plugin:layout(props)
-    myPage = page:new{name = "Main Page"}   -- Create a page and capture its handle.
-    page:new{name = "Last Page"}            -- We can also create a page without capturing its handle.
-    page[200] = {name = "New Last Page"}    -- The page array can also have 'holes' in it.
-    page[20] = {name = "Other Page"}         -- Alternatively we can index 'page' directly.
+    mainPage = page:new{name = "Main"} -- Create a page and capture its handle.
+    setupPage = page:new{name = "Setup"} -- Create a page and capture its handle.
 
-    myPage.name = "Hello"
-    a = knob:new{name = "a", unit = "Integer", min = 0, max = 10}
+    volume = knob:new{name = "Volume", unit = "dB", min = -100, max = 10} -- Create a knob control and capture its handle.
 
-    for i = 1, 5, 1 do
-        a[i][myPage] = {hPos = i * 50}
-    end
-
-    a[2][page[20]] = {vPos = 100, hPos = 50}
+    volume[1][mainPage] = {width = 60, height = 150, style = "Fader", hPos = 10, vPos = 10} -- Show as fader on main page.
+    volume[1][setupPage] = {width = 60, height = 60, style = "Knob", hPos = 10, vPos = 10} -- Show as knob on setup page.
 
 
 end
 
 function plugin:code()
     print("Wow! Our Runtime code works!")
-    print(Properties.prop.Value)
 end
 
 framework = {   -- Framework boilerplate & inheritance methods.
@@ -518,7 +510,7 @@ knob = control:inherit(
         new = function(self, t)
             if self ~= knob then error("Invalid call to 'new'. Use knob:new{}", 2) end
             if not t then error("Failed to supply valid table for new knob.", 2) end
-            if not t.unit or not (t.unit == "Hz" or t.unit == "Float" or t.unit == "Integer" or t.unit == "Pan" or t.unit == "Percent" or t.unit == "Position" or t.unit == "Seconds") then error("Failed to supply valid unit type for new knob.", 2) end
+            if not t.unit or not (t.unit == "dB" or t.unit == "Hz" or t.unit == "Float" or t.unit == "Integer" or t.unit == "Pan" or t.unit == "Percent" or t.unit == "Position" or t.unit == "Seconds") then error("Failed to supply valid unit type for new knob.", 2) end
             if not t.min then error("Failed to supply valid min value for new knob.", 2) end
             if not t.max then error("Failed to supply valid max value for new knob.", 2) end
             
