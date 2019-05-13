@@ -2,16 +2,16 @@ local plugin = {}   -- Do not remove.
 
 function plugin:definition()
     -- A unique hyphenated GUID. See http://guidgenerator.com/
-    plugin.guid = "dda1b925-231a-4960-887e-410879395f04"
+    plugin.guid = "dda1b925-231a-4960-887e-410879395f05"
 
     -- A version number string. A differing version string will prompt the user whether to upgrade. See https://semver.org/
     plugin.version = "1.0.0"
 
     -- Name that will appear in the Schematic Library. (Putting ~ inbetween words makes second word the name in a folder called by the first word.)
-    plugin.name = "My Object Oriented Plugin v" .. self.version -- We can append the version number for convenience.
+    plugin.name = "My Object Oriented Plugin Example v" .. self.version -- We can append the version number for convenience.
 
     -- Name that will appear on the plugin icon, and in the title bar. (This is optional. If not supplied plugin.name will be used.)
-    plugin.prettyName = "My Object Oriented Plugin With A Pretty Name"
+    plugin.prettyName = "My Object Oriented Plugin Example With A Pretty Name"
 
     -- This message may be seen when a version mismatch occurs.
     --plugin.description = "A plugin where all control & graphic elements are objects"
@@ -38,6 +38,7 @@ end
 
 function plugin:code()
     print("Wow! Our Runtime code works!")
+    Controls.Volume.EventHandler = function(ctl) print("Volume is " .. ctl.String) end
 end
 
 framework = {   -- Framework boilerplate & inheritance methods.
