@@ -20,7 +20,11 @@ function plugin:definition()
 end
 
 function plugin:properties()
-    property:number{min = 0, max = 10, name = "myprop"}
+    property:string{name = "A Pretty String", value = "Hurro!"}
+    property:boolean{name = "Bool"}
+    property:combo{name = "combobox", choices = {"One", "sdf", "sdsdfff"}}
+    prop = property:number{min = 0, max = 10, value = 7, name = "prop"}
+    property:number{min = 0, max = 10, name = "rect", rectify = function(self) if prop.value > 5 then self.hidden = true end end}
 end
 
 function plugin:layout(props)
@@ -42,7 +46,8 @@ function plugin:layout(props)
 end
 
 function plugin:code()
-    print("Wow! Our Runtime code works!", myPage.name)
+    print("Wow! Our Runtime code works!")
+    print(Properties.prop.Value)
 end
 
 framework = {   -- Framework boilerplate & inheritance methods.
@@ -163,45 +168,74 @@ property = framework:inherit(
     {   -- Immutable Downstream.
         _props = {},
 
-        new = function(self, t)
-            if self ~= property then error("Invalid call. Must be used as method. Eg. property:integer{}") end
-            if not t or type(t) ~= "table" then error("Invalid argument. Table expected, got " .. type(t), 2) end
-            if not t.name and type(t.name) ~= "string" then error("Failure to supply valid name for property.", 2) end
+        _new = function(self, t)
+            if self ~= property then error("Invalid call. Must be used as method. Eg. property:number{}") end
+            if type(t) ~= "table" then error("Invalid argument. Table expected, got " .. type(t), 2) end
+            if type(t.name) ~= "string" then error("Failure to supply valid name for property.", 2) end
             if property._metatable.immutableDownstream._props[t.name] then error("A property named \"" .. t.name .. "\" already exists.", 2) end
-            t.Value = nil   -- Ensure a value cant be supplied during definition.
 
-            property._metatable.immutableDownstream._props[t.name] = t  -- Move table to new _props object.
-            return property._metatable.immutableDownstream._props[t.name] -- Return handle for new property.
+            table.insert(property._metatable.immutableDownstream._props, t)  -- Move table to new _props object.
+            return property._metatable.immutableDownstream._props[#property._metatable.immutableDownstream._props] -- Return handle for new property.
+        end,
+
+        boolean = function(self, t)
+            if type(t) ~= "table" then error("Invalid argument. Table expected, got " .. type(t), 2) end
+            t.value = t.value ~= nil and (not not t.value) or nil
+            t.type = "boolean"
+            return self:_new(t)
         end,
 
         number = function(self, t)
-            if not t or type(t) ~= "table" then error("Invalid argument. Table expected, got " .. type(t), 2) end
-            if not t.min or type(t.min) ~= "number" then error("Failure to supply 'min' for new integer property.", 2) end
-            if not t.max or type(t.max) ~= "number" then error("Failure to supply 'max' for new integer property.", 2) end
+            if type(t) ~= "table" then error("Invalid argument. Table expected, got " .. type(t), 2) end
+            if type(t.min) ~= "number" then error("Failure to supply 'min' for new integer property.", 2) end
+            if type(t.max) ~= "number" then error("Failure to supply 'max' for new integer property.", 2) end
+            t.value = t.value and tonumber(t.value) or nil  -- Ensure we are passing a number type.
             t.type = "double"   -- Do we need to differentiate between 'integer' and 'double' types?
-            return self:new(t)
+            return self:_new(t)
+        end,
+        
+        string = function(self, t)
+            if type(t) ~= "table" then error("Invalid argument. Table expected, got " .. type(t), 2) end
+            t.value = t.value and tostring(t.value) or nil  -- Ensure we are passing string type.
+            t.type = "string"
+            return self:_new(t)
         end,
 
-        list = function(self)
-            if not plugin._propsDefined then plugin:properties() end
+        combo = function(self, t)
+            if type(t) ~= "table" then error("Invalid argument. Table expected, got " .. type(t), 2) end
+            if type(t.choices) ~= "table" or #t.choices < 1 then error("No choices supplied for the combobox property." .. #t.choices, 2) end
+            t.value = t.value and tostring(t.value) or tostring(t.choices[1])  -- Ensure we are passing string type, and if no 'value' is supplied, use the 1st index of the 'choices' array.
+            t.type = "enum"
+            return self:_new(t)
+        end,
+
+        _list = function(self)   -- Reurn a list of properties formatted for the 'GetProperties' funciton.
+            if not plugin._propsDefined then plugin:properties() plugin._propsDefined = true end
             local props = {}
-            for i, v in pairs(property._metatable.immutableDownstream._props) do
-                print(i, v)
+            for i, v in ipairs(property._metatable.immutableDownstream._props) do
                 table.insert(props,
                 {
                     Name = v.name,
                     Type = v.type,
-                    Value = v.default,
-                    Min = (type(v.type) == "double" or type(v.type) == "integer") and v.min or nil,
-                    Max = (type(v.type) == "double" or type(v.type) == "integer") and v.max or nil,
-                    Choices = (type(v.type) == "enum") and v.choices,
+                    Value = v.value,
+                    Min = (v.type == "double" or v.type == "integer") and v.min or nil,
+                    Max = (v.type == "double" or v.type == "integer") and v.max or nil,
+                    Choices = (v.type == "enum") and v.choices or nil,
                 })
             end
-            plugin._propsDefined = true
             return props
         end,
 
-        rectify = function(self, props)
+        _rectify = function(self, props) -- Load plugin values, and invoke 'rectify' event handler functions when present. Add 'IsHidden' element & return props table.
+            if not plugin._propsDefined then plugin:properties() plugin._propsDefined = true end
+            for i, v in pairs(property._metatable.immutableDownstream._props) do
+                v.value = props[v.name] and props[v.name].Value
+            end
+            for i, v in pairs(property._metatable.immutableDownstream._props) do
+                if type(v.rectify) == "function" then v.rectify(v) end
+                props[v.name].IsHidden = v.hidden
+            end
+            return props
         end,
     },
     {   -- Immutable Global Table.
@@ -506,11 +540,11 @@ end
 function GetPrettyName(props)                                               -- Supply the prettyName to QSD.
     return plugin.prettyName or plugin.name
 end
-function GetProperties(props)                                               -- Supply properties definition to QSD.
-    return property:list(props)
+function GetProperties()                                               -- Supply properties definition to QSD.
+    return property:_list()
 end
 function RectifyProperties(props)                                           -- Decide which properties should be hidden.
-    return props --property:rectify(props)
+    return property:_rectify(props)
 end
 function GetPages(props)                                                    -- Supply page definitions to QDS.
     if not plugin._layoutDefined then plugin:layout(props) end
