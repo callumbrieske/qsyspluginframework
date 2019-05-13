@@ -520,6 +520,32 @@ knob = control:inherit(
     }
 )
 
+button = control:inherit(
+    {   -- Local table.
+        style = "Button",
+        width = 32,
+        height = 16,
+    },
+    {   -- Immutable Locally.
+
+    },
+    {   -- Immutable Downstream.
+        _type = "control prototype",
+        _controlType = "Button",
+
+        new = function(self, t)
+            if self ~= button then error("Invalid call to 'new'. Use button:new{}", 2) end
+            if not t then error("Failed to supply valid table for new button.", 2) end
+            --if type(t.buttonType) ~= "string" or t.buttonType ~= "Trigger" then error("Failed to supply valid max value for new knob.", 2) end
+            
+            return self:newControl(t)
+        end,
+    },
+    {   -- Immutable Global Table.
+
+    }
+)
+
 if Controls then    -- If Controls have been defined run code, otherwise supply plugin definition to QSD.
     plugin:code()
 else
