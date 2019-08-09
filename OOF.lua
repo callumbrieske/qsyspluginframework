@@ -556,7 +556,7 @@ end
 function GetPrettyName(props)                                               -- Supply the prettyName to QSD.
     return plugin.prettyName or plugin.name
 end
-function GetProperties()                                               -- Supply properties definition to QSD.
+function GetProperties()                                                    -- Supply properties definition to QSD.
     return property:_list()
 end
 function RectifyProperties(props)                                           -- Decide which properties should be hidden.

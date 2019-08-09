@@ -9,11 +9,13 @@ An object oriented framework for plugin development in the Q-Sys Lua environment
 1. Single line control definition. __DONE__
 1. Single line property creation & rectification. __DONE__
 1. Single line graphic element creation.
+1. Z-Order is inherent, but can be modified with 'send back', 'send forward', 'send to back', and 'send to front' methods.
 1. Alighment method such as pack and distribute for control and graphic elements.
 1. Other things as they are thought of...
 
 ## TODO
 
+1. Modify visual methods to allow Z-Order property.
 1. Use hidden tables to prevent overwrites?
 1. Add `__func` metamethods to allow a table to be supplied to controls when direct indexing.
 1. Add support from graphic elements.
