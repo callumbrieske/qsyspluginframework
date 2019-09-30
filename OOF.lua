@@ -1,5 +1,9 @@
 local plugin = {}   -- Do not remove.
 
+-- Place Globals here. \/
+
+-- Place Globals here. /\ 
+
 function plugin:definition()
     -- A unique hyphenated GUID. See http://guidgenerator.com/
     plugin.guid = "dda1b925-231a-4960-887e-410879395f04"
@@ -449,7 +453,8 @@ control = visual:inherit(
         end,
 
         list = function()   -- Return an array formatted for GetControls.
-			local controls = {}
+            local controls = {}
+            local temp = 1
 			for name, p in pairs(control._metatable.immutableDownstream._controlObjects) do	-- Iterate through the '_controlObjects' table, build the control definitions table.
 				--print(name, p.unit, p.min, p.max, #p)   -- Debug contrlol listing,
 				local ctl = {}
@@ -458,7 +463,9 @@ control = visual:inherit(
 				ctl["ControlUnit"] = p.unit
 				ctl["Min"] = p.min
 				ctl["Max"] = p.max
-				ctl["Count"] = #p
+                ctl["Count"] = #p
+                ctl["ZOrder"] = temp
+                temp = temp + 1
 				table.insert(controls, ctl)
 			end
 			return controls
