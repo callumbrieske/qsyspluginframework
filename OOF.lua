@@ -12,10 +12,10 @@ function plugin:definition()
     plugin.version = "1.0.0"
 
     -- Name that will appear in the Schematic Library. (Putting ~ inbetween words makes second word the name in a folder called by the first word.)
-    plugin.name = "My Object Oriented Plugin v" .. self.version -- We can append the version number for convenience.
+    plugin.name = "DEV~My Object Oriented Plugin v" .. self.version -- We can append the version number for convenience.
 
     -- Name that will appear on the plugin icon, and in the title bar. (This is optional. If not supplied plugin.name will be used.)
-    plugin.prettyName = "My Object Oriented Plugin With A Pretty Name"
+    plugin.prettyName = "DEV\r\nMy Object Oriented Plugin With A Pretty Name"
 
     -- This message may be seen when a version mismatch occurs.
     --plugin.description = "A plugin where all control & graphic elements are objects"
@@ -148,7 +148,7 @@ framework = {   -- Framework boilerplate & inheritance methods.
 
     },
 
-    bleh = 7
+    bleh = 7    -- Junk for testing.
 
 }
 framework = framework._metatable.immutableGlobally.inherit(framework, nil, nil, nil, framework, true)    -- Make framework immutable.
