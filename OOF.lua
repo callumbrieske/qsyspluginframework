@@ -254,12 +254,33 @@ visual = framework:inherit(
             if not t or type(t) ~= "table" then error("Invalid argument. Table expected, got " .. type(t), 2) end
             if not t[1] then error("No pages supplied.", 2) end
             
-            local function checkPage(v) if type(v) ~= "table" or v._type ~= "page" then error("Invalid page. A new instance can only exist on a page.", 2) end end
+            local function checkPage(p) if type(p) ~= "table" or p._type ~= "page" then error("Invalid page. A new instance can only exist on a page.", 2) end end
             local pageCnt, handle = 0, nil
 
             local function createInstance(page, t)
-                pageCnt = pageCnt + 1
+                pageCnt = pageCnt + 1   -- Count the number of pages that the item is added to.
                 if rawget(self, page) then error("This control already exists on '" .. page.name .. "'.", 2) end
+
+                ---[[
+                table.insert(page._visualObjects, self:inherit(
+                    --{   -- Local table.
+                    --}
+                    {},
+                    {   -- Immutable Locally.
+                
+                    },
+                    {   -- Immutable Downstream.
+                        _type = "visual instance"
+                    },
+                    {   -- Immutable Global Table.
+                
+                    }
+                ))
+
+                rawset(self, page, page._visualObjects[#page._visualObjects])
+                --]]
+
+                --[[
                 rawset(self, page, self:inherit(
                     --{   -- Local table.
                     --}
@@ -274,6 +295,7 @@ visual = framework:inherit(
                 
                     }
                 ))
+                --]]
 
                 self[page]:copyTable(t)  -- Copy table contents invoking metamethods.
 
@@ -321,8 +343,8 @@ page = visual:inherit(
             if not t or type(t) ~= "table" then error("Failure to supply valid table for new.", 2) end
             if not t.name or type(t.name) ~= "string" then error("Failure to supply valid name for page.", 2) end
             if t.index and type(t.index) ~= "number" then error("Failure to supply valid index for page.", 2) end
-            t.index = t.index or (#self + 1)    -- Find next index, or use supplied index.
-            rawset(self, t.index, self:inherit({name = t.name}, nil, {_type = "page"}))    -- Create new page index.
+            t.index = t.index or (#self + 1)    -- Find next index, or use supplied index.  We probably should check that this page doesnt exist first.
+            rawset(self, t.index, self:inherit({name = t.name}, {_visualObjects = {}}, {_type = "page"}))    -- Create new page index.
 			return self[t.index]	-- Return a handle to the new page.
         end,
 
@@ -456,7 +478,7 @@ control = visual:inherit(
 
         list = function()   -- Return an array formatted for GetControls.
             local controls = {}
-            local temp = 1
+            --local temp = 1
 			for name, p in pairs(control._metatable.immutableDownstream._controlObjects) do	-- Iterate through the '_controlObjects' table, build the control definitions table.
 				--print(name, p.unit, p.min, p.max, #p)   -- Debug contrlol listing,
 				local ctl = {}
@@ -466,8 +488,8 @@ control = visual:inherit(
 				ctl["Min"] = p.min
 				ctl["Max"] = p.max
                 ctl["Count"] = #p
-                ctl["ZOrder"] = temp
-                temp = temp + 1
+                --ctl["ZOrder"] = temp
+                --temp = temp + 1
 				table.insert(controls, ctl)
 			end
 			return controls
