@@ -40,6 +40,8 @@ function plugin:layout(props)
     
     vol2[1][mainPage] = {width = 60, height = 60, style = "Knob", hPos = 15, vPos = 10} -- Show as knob on setup page.
     volume[1][mainPage] = {width = 60, height = 60, style = "Knob", hPos = 10, vPos = 10, color = {255,0,0}} -- Show as knob on setup page.
+
+    --volume[1][mainPage]:sendToFront()
 end
 
 function plugin:code()
@@ -261,7 +263,6 @@ visual = framework:inherit(
                 pageCnt = pageCnt + 1   -- Count the number of pages that the item is added to.
                 if rawget(self, page) then error("This control already exists on '" .. page.name .. "'.", 2) end
 
-                ---[[
                 table.insert(page._visualObjects, self:inherit(
                     --{   -- Local table.
                     --}
@@ -270,7 +271,8 @@ visual = framework:inherit(
                 
                     },
                     {   -- Immutable Downstream.
-                        _type = "visual instance"
+                        _type = "visual instance",
+                        _page = page
                     },
                     {   -- Immutable Global Table.
                 
@@ -278,24 +280,6 @@ visual = framework:inherit(
                 ))
 
                 rawset(self, page, page._visualObjects[#page._visualObjects])
-                --]]
-
-                --[[
-                rawset(self, page, self:inherit(
-                    --{   -- Local table.
-                    --}
-                    {},
-                    {   -- Immutable Locally.
-                
-                    },
-                    {   -- Immutable Downstream.
-                        _type = "visual instance"
-                    },
-                    {   -- Immutable Global Table.
-                
-                    }
-                ))
-                --]]
 
                 self[page]:copyTable(t)  -- Copy table contents invoking metamethods.
 
@@ -316,6 +300,28 @@ visual = framework:inherit(
 
             if pageCnt < 1 then error("No pages supplied.", 2) end
             return handle
+        end,
+
+        zorder = function(self) -- Return ZOrder for current object.
+            for i, v in ipairs(self._page._visualObjects) do
+                if v == self then return i end
+            end
+        end,
+
+        sendToFront = function(self) -- Send visual object to front. (Highest ZOrder)
+            for i, v in ipairs(self._page._visualObjects) do
+                if v == self then
+                    table.insert(self._page._visualObjects, table.remove(self._page._visualObjects, i))
+                end
+            end
+        end,
+
+        sendToBack = function(self) -- Send visual object to back. (Lowest ZOrder)
+            for i, v in ipairs(self._page._visualObjects) do
+                if v == self then
+                    table.insert(self._page._visualObjects, 1, table.remove(self._page._visualObjects, i))
+                end
+            end
         end
     },
     {   -- Immutable Global Table.
@@ -505,11 +511,15 @@ control = visual:inherit(
                     ---[[
                     if rawget(controlIndex, page) then
                         print("Boo!", (#controlObject > 1) and (controlObject.name .. " " .. i) or controlObject.name)
+
+                        --error(controlIndex[page]:zorder())
+
                         controls[(#controlObject > 1) and (controlObject.name .. " " .. i) or controlObject.name] = {
                             Style = controlIndex[page].style,
                             Position = {controlIndex[page].hPos, controlIndex[page].vPos},
                             Size = {controlIndex[page].width, controlIndex[page].height},
                             Color = controlIndex[page].color,
+                            ZOrder = controlIndex[page]:zorder(),
                         }
                     end
                     --]]
