@@ -9,7 +9,7 @@ function plugin:definition()
     plugin.guid = "dda1b925-231a-4960-887e-410879395f04"
 
     -- A version number string. A differing version string will prompt the user whether to upgrade. See https://semver.org/
-    plugin.version = "1.0.0"
+    plugin.version = "1.0.2"
 
     -- Name that will appear in the Schematic Library. (Putting ~ inbetween words makes second word the name in a folder called by the first word.)
     plugin.name = "DEV~My Object Oriented Plugin v" .. self.version -- We can append the version number for convenience.
@@ -18,7 +18,7 @@ function plugin:definition()
     plugin.prettyName = "DEV\r\nMy Object Oriented Plugin With A Pretty Name"
 
     -- This message may be seen when a version mismatch occurs.
-    --plugin.description = "A plugin where all control & graphic elements are objects"
+    plugin.description = "A plugin where all control & graphic elements are objects"
 
     -- Setting this to true will show the Lua debug window at the bottom of the UI.
     plugin.showDebug = true
@@ -35,9 +35,11 @@ function plugin:layout(props)
     setupPage = page:new{name = "Setup"} -- Create a page and capture its handle.
 
     volume = knob:new{name = "Volume", unit = "dB", min = -100, max = 10} -- Create a knob control and capture its handle.
+    vol2 = knob:new{name = "vol2", unit = "dB", min = -100, max = 10}
 
-    volume[1][mainPage] = {width = 60, height = 150, style = "Fader", hPos = 10, vPos = 10} -- Show as fader on main page.
-    volume[1][setupPage] = {width = 60, height = 60, style = "Knob", hPos = 10, vPos = 10} -- Show as knob on setup page.
+    
+    vol2[1][mainPage] = {width = 60, height = 60, style = "Knob", hPos = 15, vPos = 10} -- Show as knob on setup page.
+    volume[1][mainPage] = {width = 60, height = 60, style = "Knob", hPos = 10, vPos = 10, color = {255,0,0}} -- Show as knob on setup page.
 end
 
 function plugin:code()
@@ -119,7 +121,7 @@ framework = {   -- Framework boilerplate & inheritance methods.
                 end
             end,
 
-            packArray = function(self, a)   -- This is pretty gross. There is probably a much cleaner way to do this.
+            packArray = function(self, a)   -- Pack table into array. This is pretty gross. There is probably a much cleaner way to do this.
                 local tab = {}
                 for i, v in pairs(a) do
                     if type(i) == "number" then
@@ -483,8 +485,9 @@ control = visual:inherit(
                         print("Boo!", (#controlObject > 1) and (controlObject.name .. " " .. i) or controlObject.name)
                         controls[(#controlObject > 1) and (controlObject.name .. " " .. i) or controlObject.name] = {
                             Style = controlIndex[page].style,
-                            Position = {self:number(controlIndex[page].hPos), self:number(controlIndex[page].vPos)},
-                            Size = {self:number(controlIndex[page].width), self:number(controlIndex[page].height)},
+                            Position = {controlIndex[page].hPos, controlIndex[page].vPos},
+                            Size = {controlIndex[page].width, controlIndex[page].height},
+                            Color = controlIndex[page].color,
                         }
                     end
                     --]]
