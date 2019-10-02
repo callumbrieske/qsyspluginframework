@@ -181,7 +181,7 @@ property = framework:inherit(
             return self:_new(t)
         end,
 
-        number = function(self, t)
+        number = function(self, t)  -- Number property type.
             if type(t) ~= "table" then error("Invalid argument. Table expected, got " .. type(t), 2) end
             if type(t.min) ~= "number" then error("Failure to supply 'min' for new integer property.", 2) end
             if type(t.max) ~= "number" then error("Failure to supply 'max' for new integer property.", 2) end
@@ -190,14 +190,14 @@ property = framework:inherit(
             return self:_new(t)
         end,
         
-        string = function(self, t)
+        string = function(self, t)  -- String property type.
             if type(t) ~= "table" then error("Invalid argument. Table expected, got " .. type(t), 2) end
             t.value = t.value and tostring(t.value) or nil  -- Ensure we are passing string type.
             t.type = "string"
             return self:_new(t)
         end,
 
-        combo = function(self, t)
+        combo = function(self, t)   -- Combobox property type.
             if type(t) ~= "table" then error("Invalid argument. Table expected, got " .. type(t), 2) end
             if type(t.choices) ~= "table" or #t.choices < 1 then error("No choices supplied for the combobox property." .. #t.choices, 2) end
             t.value = t.value and tostring(t.value) or tostring(t.choices[1])  -- Ensure we are passing string type, and if no 'value' is supplied, use the 1st index of the 'choices' array.
@@ -205,7 +205,7 @@ property = framework:inherit(
             return self:_new(t)
         end,
 
-        _list = function(self)   -- Reurn a list of properties formatted for the 'GetProperties' funciton.
+        _list = function(self)   -- Reurn a list of properties formatted for the 'GetProperties' function.
             if not plugin._propsDefined then plugin:properties() plugin._propsDefined = true end
             local props = {}
             for i, v in ipairs(property._metatable.immutableDownstream._props) do
@@ -413,7 +413,7 @@ control = visual:inherit(
                 {   -- Local table.
                     _metatable = {
                         ---[[ We probably dont need this method. It works, but is kind of pointless.
-                        __index = function(t, k)    -- Special metamethod to allow calling empty indexes instead on newIndex method.
+                        __index = function(t, k)    -- Special metamethod to allow calling empty indexes instead of newIndex method.
                             if type(k) == "table" and k._type == "page" then
                                 print("This is a page!")
                                 return self._metatable.immutableDownstream.newInstance(t, {k})   -- Index array using newIndex method.
